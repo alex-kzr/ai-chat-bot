@@ -1,0 +1,24 @@
+# Автоматически нормализуем окончания строк
+* text=auto
+
+# Явно задаём LF для кода
+*.js text eol=lf
+*.ts text eol=lf
+*.py text eol=lf
+*.go text eol=lf
+*.java text eol=lf
+*.sh text eol=lf
+
+# Windows-скрипты — CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Бинарники (чтобы git их не трогал)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary
+*.exe binary

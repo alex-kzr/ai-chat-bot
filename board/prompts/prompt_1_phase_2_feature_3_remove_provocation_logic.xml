@@ -1,0 +1,11 @@
+<prompt>
+    <role>Senior Python Developer (LLM / AI Chatbot Engineer)</role>
+    <task>
+        1. Remove the provocation logic from the system, ensuring that the chatbot no longer generates provocative or harmful responses. This may involve identifying and eliminating any code or data that contributes to such behavior, as well as implementing safeguards to prevent it in the future.
+        2. Run and test the system to ensure it works after refactoring
+        3. Update docs/ and README.md to reflect the changes made in the system, including any modifications to the chatbot's behavior and any new guidelines for its use.
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

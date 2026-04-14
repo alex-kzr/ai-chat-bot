@@ -1,0 +1,10 @@
+<prompt>
+    <role>Senior Python Backend Engineer with DevOps & Testing experience</role>
+    <task>
+        1. Move all executable code to src/ directory
+        2. Run and test the system to ensure it works after refactoring
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

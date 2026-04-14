@@ -1,0 +1,28 @@
+<prompt>
+    <role>System Architect / System Documentalist</role>
+    <task>
+        1. Delete README.md, SPEC.md and all docs/*.md files
+        2. Analyze the project, including:
+        - what the architecture is
+        - how input data is processed
+        - how the system works
+        - what algorithms are used
+        - what the domain model is
+        - what output data is produced
+        - how to use the system.
+        3. Write documents for the project
+    </task>
+    <output>
+        2.  Write documents for the project in files:
+        - docs/content-dump.md
+        - docs/change-request.md
+        - docs/legacy-warnings.md
+        - docs/project-overview.md
+        - docs/architecture.md
+        - docs/domain-model.md
+        - docs/algorithms.md
+        - docs/api.md
+        - docs/usage-guide.md
+        3. Write new README.md with summary of the project and links to the above documents.
+    </output>
+</prompt>

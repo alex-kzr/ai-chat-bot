@@ -1,0 +1,55 @@
+<prompt>
+    <role>AI Conversation Architect (LLM Engineer)</role>
+    <task>
+        Ensure consistent and controllable behavior of the AI model by introducing a system prompt that defines tone, personality, and response style.
+
+        ## Context
+        Currently, the chatbot responds without a fixed behavioral guideline, which leads to inconsistent tone and style. Introducing a system prompt will standardize responses and improve user experience.
+
+        ## Requirements
+        - Add a system prompt that defines model behavior (e.g., "You are an experienced programmer who answers concisely and clearly" or "You are a friendly old companion").
+        - Include the system prompt as part of the message context sent to the LLM.
+        - Ensure the system prompt is always the first message in the conversation payload.
+        - Make the system prompt configurable (optional but recommended).
+
+        ## Implementation Notes
+        - Use the standard message format:
+        [
+        { "role": "system", "content": "..." },
+        { "role": "user", "content": "..." },
+        { "role": "assistant", "content": "..." }
+        ]
+        - Inject the system prompt before user history when calling the LLM.
+        - Ensure compatibility with existing history handling logic.
+        - Avoid duplicating the system prompt on every request if already present.
+
+        ## Definition of Done
+        - [ ] System prompt is added to LLM requests
+        - [ ] Model responses reflect defined behavior (tone/style)
+        - [ ] System prompt is consistently applied across all conversations
+        - [ ] No regressions in existing chat functionality
+        - [ ] Code is clean and maintainable
+
+        ## Affected Files / Components
+        - src/llm.py
+        - src/prompts.py (if exists)
+        - src/handlers.py
+
+        ## Risks / Dependencies
+        - Incorrect placement of system prompt may reduce effectiveness
+        - Conflicts with existing prompt engineering logic
+
+        ## Validation Steps
+        1. Send a test prompt without system prompt → observe baseline behavior
+        2. Enable system prompt and resend the same input
+        3. Compare responses and verify tone/style changes
+        4. Test across multiple inputs to ensure consistency
+
+        ## Follow-ups (optional)
+        - Add support for dynamic system prompt per user
+        - Store system prompt configuration externally (e.g., config file or DB)
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

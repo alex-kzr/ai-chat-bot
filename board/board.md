@@ -7,6 +7,9 @@
 - (empty)
 
 ## Done
+- SP-03: Add deduplication guard in ask_llm()
+- SP-02: Update ask_llm() to read system prompt from config
+- SP-01: Move SYSTEM_PROMPT to config.py
 - HS-04: Wire summarization into handler pipeline
 - HS-03: Create summarizer module
 - HS-02: Add summarization prompt to prompts.py

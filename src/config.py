@@ -8,6 +8,10 @@ OLLAMA_URL: str = os.getenv("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen3:0.6b")
 OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 
+# System prompt configuration
+SYSTEM_PROMPT: str = os.getenv("SYSTEM_PROMPT", "You are a helpful assistant. Answer clearly and concisely in the user's language.")
+SYSTEM_PROMPT_ENABLED: bool = os.getenv("SYSTEM_PROMPT_ENABLED", "true").lower() == "true"
+
 # History size limits
 MAX_HISTORY_MESSAGES: int = 20  # Keep last N messages (~10 turns)
 # MAX_HISTORY_CHARS: int = 10000  # TODO: char-based strategy (future improvement)

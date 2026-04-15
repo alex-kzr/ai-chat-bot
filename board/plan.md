@@ -62,3 +62,17 @@ Add configurable thresholds, a dedicated summarization prompt, an isolated `src/
 - **History structure**: A special `{"role": "system", "content": "[Summary] ..."}` entry is prepended so the LLM always sees prior context.
 - **Summarization prompt**: Dedicated prompt in `src/prompts.py` instructs the LLM to produce a structured, fact-preserving summary without hallucination.
 - **Isolation**: Summarization operates on a single user's slice of `_store` — histories never mix.
+
+---
+
+# System Prompt: Configurable LLM Behavior
+
+This plan makes the system prompt a first-class, configurable feature. A `SYSTEM_PROMPT` and its `role: system` injection already exist in `src/prompts.py` and `src/llm.py`, but the value is hardcoded and cannot be changed without editing source. The goal is to expose it through `config.py` (env-var override) and add a deduplication guard so the prompt is never injected twice.
+
+## Phase 1: System Prompt (SP-01 to SP-03)
+
+Move `SYSTEM_PROMPT` into `src/config.py` as an env-configurable constant, update `ask_llm()` to read from config, and guard against duplicate system messages in the history payload.
+
+- **Config**: `SYSTEM_PROMPT` in `src/config.py` reads from `SYSTEM_PROMPT` env var with a sensible default; `SYSTEM_PROMPT_ENABLED` flag allows disabling it entirely.
+- **LLM integration**: `ask_llm()` reads the prompt from config instead of importing from `prompts.py` directly.
+- **Deduplication**: Before prepending, `ask_llm()` checks whether history already starts with a `role: system` entry and skips injection if so.

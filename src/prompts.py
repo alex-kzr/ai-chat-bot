@@ -4,11 +4,6 @@ ERROR_PHRASES: list[str] = [
     "Something went wrong, but it's definitely not my fault. Try again.",
 ]
 
-SYSTEM_PROMPT: str = (
-    "You are a helpful assistant. "
-    "Answer clearly and concisely in the user's language."
-)
-
 SUMMARIZATION_PROMPT: str = (
     "You are a conversation summarizer. Given the following chat history between a user and an assistant, "
     "produce a concise summary that preserves all important information.\n\n"

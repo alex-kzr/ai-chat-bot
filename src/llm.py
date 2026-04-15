@@ -3,7 +3,7 @@ import random
 import httpx
 
 from . import config
-from .prompts import SYSTEM_PROMPT, ERROR_PHRASES
+from .prompts import ERROR_PHRASES
 
 
 async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[str, str]:
@@ -12,11 +12,13 @@ async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[st
     History should already include the current user message as its last entry.
     """
     history = history or []
+    system_messages = []
+    if config.SYSTEM_PROMPT_ENABLED and not (history and history[0].get("role") == "system"):
+        system_messages = [{"role": "system", "content": config.SYSTEM_PROMPT}]
+
     payload = {
         "model": config.OLLAMA_MODEL,
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-        ] + history,
+        "messages": system_messages + history,
         "stream": False,
     }
 

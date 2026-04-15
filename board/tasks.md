@@ -115,3 +115,22 @@ Create `src/summarizer.py` with: `needs_summarization(user_id)`, `get_messages_t
 ### HS-04 Wire summarization into handler pipeline
 Update `src/handlers.py` to call `compress_history()` before each LLM request, ensuring the context stays bounded and the summary is included in every subsequent call.
 → [HS-04-wire-summarization.md](./tasks/HS-04-wire-summarization.md)
+
+---
+
+# 📋 Tasks — System Prompt
+---
+
+## Phase 1 — System Prompt
+
+### SP-01 Move SYSTEM_PROMPT to config.py
+Add `SYSTEM_PROMPT` and `SYSTEM_PROMPT_ENABLED` to `src/config.py`, reading values from environment variables with sensible defaults. Remove the `SYSTEM_PROMPT` constant from `src/prompts.py`.
+→ [SP-01-system-prompt-config.md](./tasks/SP-01-system-prompt-config.md)
+
+### SP-02 Update ask_llm() to read system prompt from config
+Change `src/llm.py` to import `SYSTEM_PROMPT` and `SYSTEM_PROMPT_ENABLED` from `src/config` instead of `src/prompts`. Only inject the system message when `SYSTEM_PROMPT_ENABLED` is `True`.
+→ [SP-02-llm-use-config-prompt.md](./tasks/SP-02-llm-use-config-prompt.md)
+
+### SP-03 Add deduplication guard in ask_llm()
+Before prepending the system message, check whether `history` already starts with a `{"role": "system", ...}` entry. If it does, skip injection to avoid duplicate system messages.
+→ [SP-03-dedup-system-message.md](./tasks/SP-03-dedup-system-message.md)

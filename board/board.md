@@ -7,6 +7,12 @@
 - (empty)
 
 ## Done
+- IMR-03: Implement validation and testing
+- IMR-02: Integrate logging into request pipeline
+- IMR-01: Identify LLM request boundary
+- LIS-03: Add token counting mechanism
+- LIS-02: Implement context extraction and serialization
+- LIS-01: Create logging configuration and utilities
 - SP-03: Add deduplication guard in ask_llm()
 - SP-02: Update ask_llm() to read system prompt from config
 - SP-01: Move SYSTEM_PROMPT to config.py

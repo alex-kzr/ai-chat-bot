@@ -4,6 +4,7 @@ import httpx
 
 from . import config
 from .prompts import ERROR_PHRASES
+from .context_logging import extract_context, count_context_tokens, log_context
 
 
 async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[str, str]:
@@ -23,6 +24,23 @@ async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[st
     }
 
     logging.info(">>> LLM request: %s", payload["messages"])
+
+    # Log context using structured context logging infrastructure
+    if config.CONTEXT_LOGGING_ENABLED:
+        try:
+            context_data = extract_context(
+                messages=payload["messages"],
+                model_name=config.OLLAMA_MODEL,
+                user_id=None,  # Not available in current function signature
+            )
+            # Add token count to context
+            token_count = count_context_tokens(payload["messages"])
+            context_data["statistics"]["token_count"] = token_count
+
+            log_context(context_data, level="debug")
+        except Exception as e:
+            # Don't let logging errors break the request flow
+            logging.warning("Failed to log context: %s", e)
 
     try:
         async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:

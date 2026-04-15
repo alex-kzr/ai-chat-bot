@@ -23,5 +23,15 @@ SUMMARY_KEEP_RECENT: int = int(os.getenv("SUMMARY_KEEP_RECENT", "4"))  # Keep la
 # Validate summarization config
 assert SUMMARY_KEEP_RECENT < SUMMARY_THRESHOLD, "SUMMARY_KEEP_RECENT must be less than SUMMARY_THRESHOLD"
 
+# Context logging configuration
+CONTEXT_LOGGING_ENABLED: bool = os.getenv("CONTEXT_LOGGING_ENABLED", "true").lower() == "true"
+LOG_DESTINATION: str = os.getenv("LOG_DESTINATION", "console")  # "console" or "file"
+LOG_FILE_PATH: str = os.getenv("LOG_FILE_PATH", "logs/context.log")
+LOG_FORMAT: str = os.getenv("LOG_FORMAT", "human")  # "human" or "json"
+
+# Token counting configuration
+TOKEN_COUNT_STRATEGY: str = os.getenv("TOKEN_COUNT_STRATEGY", "heuristic")  # "heuristic" or "tiktoken"
+HEURISTIC_TOKEN_RATIO: int = int(os.getenv("HEURISTIC_TOKEN_RATIO", "4"))  # characters per token estimate
+
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is not set. Please add it to your .env file.")

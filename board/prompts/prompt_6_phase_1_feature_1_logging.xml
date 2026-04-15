@@ -1,0 +1,65 @@
+<prompt>
+    <role>Senior Python AI/LLM Engineer</role>
+    <task>
+        Implement Mandatory Context Logging for Model Requests
+
+        The bot currently sends requests to the model, but it is not transparent what exact context is being passed into the model at request time. This task is intended to make model input visible and measurable before every request.
+
+        Objective:
+        Implement mandatory logging of the full model input context before sending each request to the LLM.
+
+        Requirements:
+        1. Before every request to the model, log the full context exactly as it will be sent to the LLM.
+        2. Log the context size in tokens.
+        3. Logging may be implemented either:
+        - to console, or
+        - to a file
+        The implementation should be simple, readable, and easy to inspect during development.
+        4. The logged context must allow developers to clearly see:
+        - all messages included in the request,
+        - message roles,
+        - message order,
+        - the final payload that the model receives.
+        5. The token count must reflect the same context that is logged and sent.
+        6. Logging must happen automatically for every model request, without requiring manual activation in code.
+        7. The implementation should not break the current request flow to the model.
+
+        Expected Outcome:
+        Developers must be able to inspect what exactly is sent into the model and understand how large the context is before the request is executed.
+
+        Implementation Notes:
+        - Add logging as close as possible to the LLM request boundary.
+        - Prefer a single centralized place for logging so all model calls are covered consistently.
+        - If token counting already exists anywhere in the project, reuse it.
+        - If no tokenizer is currently used, add a clear and deterministic way to estimate or calculate token count.
+        - The log format should be readable for debugging and troubleshooting.
+        - Avoid partial logging; the full context must be visible.
+        - Make sure sensitive data is not accidentally masked only if the current project explicitly requires raw debugging visibility. Otherwise preserve existing security constraints.
+
+        Definition of Done:
+        1. Every model request logs the full input context.
+        2. Every model request logs the token count of that context.
+        3. Developers can clearly inspect what the model receives.
+        4. The current bot behavior continues to work without regressions.
+        5. Logging is implemented in a maintainable place in the codebase.
+
+        Validation Steps:
+        1. Run the bot locally.
+        2. Send one or more user messages.
+        3. Verify that before each LLM request the full context appears in logs.
+        4. Verify that token count is logged for the same request.
+        5. Confirm that the model still responds correctly.
+        6. Confirm that repeated requests produce updated context logs each time.
+
+        Why this role fits:
+        This task is best suited for a Senior Python AI/LLM Engineer because it touches:
+        - LLM request construction,
+        - context handling,
+        - token accounting,
+        - debugging and observability,
+        - safe integration into the model call pipeline.
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

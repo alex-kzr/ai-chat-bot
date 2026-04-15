@@ -134,3 +134,38 @@ Change `src/llm.py` to import `SYSTEM_PROMPT` and `SYSTEM_PROMPT_ENABLED` from `
 ### SP-03 Add deduplication guard in ask_llm()
 Before prepending the system message, check whether `history` already starts with a `{"role": "system", ...}` entry. If it does, skip injection to avoid duplicate system messages.
 → [SP-03-dedup-system-message.md](./tasks/SP-03-dedup-system-message.md)
+
+---
+
+# 📋 Tasks — Model Request Context Logging
+---
+
+## Phase 1 — Logging Infrastructure Setup
+
+### LIS-01 Create logging configuration and utilities
+Create `src/context_logging.py` with configurable logger setup, log output options (console/file), and utility functions for log formatting. Add logging configuration constants to `src/config.py`.
+→ [LIS-01-logging-infrastructure.md](./tasks/LIS-01-logging-infrastructure.md)
+
+### LIS-02 Implement context extraction and serialization
+Add functions to extract model request context (messages list, roles, order) and serialize it into a readable format. Support both human-readable and structured (JSON) output formats.
+→ [LIS-02-context-extraction.md](./tasks/LIS-02-context-extraction.md)
+
+### LIS-03 Add token counting mechanism
+Implement or integrate token counting to measure the size of the context being logged. Support multiple tokenization strategies (heuristic estimation, actual tokenizer if available).
+→ [LIS-03-token-counting.md](./tasks/LIS-03-token-counting.md)
+
+---
+
+## Phase 2 — Integration with Model Requests
+
+### IMR-01 Identify LLM request boundary and injection points
+Analyze `src/llm.py` to identify where requests are constructed and sent. Document the exact point where logging should be injected without breaking the flow.
+→ [IMR-01-request-boundary.md](./tasks/IMR-01-request-boundary.md)
+
+### IMR-02 Integrate logging into request pipeline
+Update `src/llm.py` to call the logging infrastructure immediately before sending each request to the LLM. Ensure logging covers all code paths (direct calls, retries, different models).
+→ [IMR-02-logging-integration.md](./tasks/IMR-02-logging-integration.md)
+
+### IMR-03 Implement validation and testing
+Create test suite verifying that context is logged for all request types, token counts are accurate, log output is readable, and no regressions occur in the bot's response flow.
+→ [IMR-03-validation-testing.md](./tasks/IMR-03-validation-testing.md)

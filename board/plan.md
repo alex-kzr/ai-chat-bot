@@ -76,3 +76,15 @@ Move `SYSTEM_PROMPT` into `src/config.py` as an env-configurable constant, updat
 - **Config**: `SYSTEM_PROMPT` in `src/config.py` reads from `SYSTEM_PROMPT` env var with a sensible default; `SYSTEM_PROMPT_ENABLED` flag allows disabling it entirely.
 - **LLM integration**: `ask_llm()` reads the prompt from config instead of importing from `prompts.py` directly.
 - **Deduplication**: Before prepending, `ask_llm()` checks whether history already starts with a `role: system` entry and skips injection if so.
+
+---
+
+# Model Request Context Logging
+
+This plan describes the implementation of mandatory context logging for all model requests. The goal is to make the model input transparent and measurable, enabling developers to inspect exactly what context is being sent to the LLM before each request.
+
+## Phase 1: Logging Infrastructure Setup (LIS-01 to LIS-03)
+We will establish the foundation for context logging by creating logging utilities, implementing context extraction and serialization, and adding token counting capability. This phase focuses on reusable infrastructure that can be integrated into the request pipeline.
+
+## Phase 2: Integration with Model Requests (IMR-01 to IMR-03)
+We will integrate the logging infrastructure into the actual LLM request boundary, ensuring that every model request is logged automatically without breaking the current request flow. This phase includes identifying injection points, implementing the integration, and validating the implementation.

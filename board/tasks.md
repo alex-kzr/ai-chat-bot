@@ -73,3 +73,22 @@ Remove provocation personality description; update goal and key design decisions
 ### RPL-07 Update README.md
 Remove provocation from the "How it works" diagram and bot description.
 → [RPL-07-update-readme.md](./tasks/RPL-07-update-readme.md)
+
+---
+
+# 📋 Tasks — Context Limitation
+---
+
+## Phase 1 — Context Limitation
+
+### CL-01 Add MAX_HISTORY_MESSAGES constant to config
+Add `MAX_HISTORY_MESSAGES` (and stub `MAX_HISTORY_CHARS`) to `src/config.py` so limits are centrally configurable.
+→ [CL-01-add-history-limit-config.md](./tasks/CL-01-add-history-limit-config.md)
+
+### CL-02 Implement trim_history() in history.py
+Add `trim_history(user_id)` to `src/history.py` that removes oldest messages (FIFO) until the list is within `MAX_HISTORY_MESSAGES`. Log when trimming occurs.
+→ [CL-02-implement-trim-history.md](./tasks/CL-02-implement-trim-history.md)
+
+### CL-03 Call trim_history() inside append_message()
+Update `append_message()` in `src/history.py` to call `trim_history()` after every append, enforcing the limit automatically on every write.
+→ [CL-03-wire-trim-into-append.md](./tasks/CL-03-wire-trim-into-append.md)

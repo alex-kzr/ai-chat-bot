@@ -1,0 +1,71 @@
+<prompt>
+    <role>Senior Python AI Engineer (LLM Systems & Context Management)</role>
+    <task>
+        Implement a context limitation mechanism for chat history (pseudo-memory) to prevent excessive growth and ensure efficient interaction with the LLM.
+
+
+        Requirements
+        1. Add Context Limitation
+
+        Implement ONE (or both) of the following strategies:
+
+        Option A — Limit by message count
+        Keep only the last N messages (e.g., 10–20)
+        Configurable limit (e.g., MAX_HISTORY_MESSAGES)
+        Option B — Limit by total text length
+        Limit total characters or tokens in history
+        Configurable limit (e.g., MAX_HISTORY_CHARS)
+        2. Overflow Handling
+
+        When the limit is exceeded:
+
+        Remove oldest messages first (FIFO approach)
+        Ensure the newest messages are always preserved
+        3. Integration
+
+        Update history handling logic:
+
+        Apply trimming:
+        after adding a new message
+        or before sending history to LLM
+        Must work per user (independent histories)
+        4. Data Format (unchanged)
+
+        History format must remain:
+
+        [
+        { "role": "user", "content": "..." },
+        { "role": "assistant", "content": "..." }
+        ]
+
+        ✅ Definition of Done
+        Context size is limited according to selected strategy
+        Old messages are correctly removed
+        New messages are always preserved
+        History works independently per user
+        No errors when sending history to LLM
+        Code is extensible for future strategies
+        🧪 Validation Steps
+        Send more than 20 messages → verify only last N are kept
+        Ensure oldest messages are removed first
+        Test with multiple users (independent histories)
+        Verify LLM responses remain correct
+        💡 Optional Improvements
+        Add strategy switch (count / length)
+        Add logging for trimming operations
+        Add future support for history summarization
+        📁 Suggested File
+
+        src/history.py
+
+        Functions to implement/update:
+
+        append_message()
+        get_history()
+        trim_history()
+        clear_history()
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

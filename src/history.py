@@ -4,6 +4,11 @@ Per-user conversation history storage module.
 Provides functions to store and retrieve conversation history indexed by Telegram user ID.
 """
 
+import logging
+from src.config import MAX_HISTORY_MESSAGES
+
+logger = logging.getLogger(__name__)
+
 _store: dict[int, list[dict]] = {}
 
 
@@ -22,6 +27,22 @@ def get_history(user_id: int) -> list[dict]:
     return list(_store[user_id])
 
 
+def trim_history(user_id: int) -> None:
+    """
+    Enforce message-count limit by removing oldest messages via FIFO.
+
+    Args:
+        user_id: Telegram user ID
+    """
+    if user_id not in _store:
+        return
+
+    while len(_store[user_id]) > MAX_HISTORY_MESSAGES:
+        _store[user_id].pop(0)
+        remaining = len(_store[user_id])
+        logger.debug(f"Trimmed message for user {user_id}; remaining: {remaining}")
+
+
 def append_message(user_id: int, role: str, content: str) -> None:
     """
     Add a message to a user's conversation history.
@@ -34,6 +55,7 @@ def append_message(user_id: int, role: str, content: str) -> None:
     if user_id not in _store:
         _store[user_id] = []
     _store[user_id].append({"role": role, "content": content})
+    trim_history(user_id)
 
 
 def clear_history(user_id: int) -> None:

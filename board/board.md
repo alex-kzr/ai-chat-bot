@@ -1,12 +1,15 @@
 # BOARD
 
 ## To Do
-- (empty)
+(empty)
 
 ## In Progress
 - (empty)
 
 ## Done
+- CL-03: Call trim_history() inside append_message()
+- CL-02: Implement trim_history() in history.py
+- CL-01: Add MAX_HISTORY_MESSAGES constant to config
 - PM-03: Wire history into message handler
 - PM-02: Refactor ask_llm() to accept history
 - PM-01: Create history storage module

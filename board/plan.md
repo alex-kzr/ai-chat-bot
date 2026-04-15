@@ -31,3 +31,18 @@ Remove all code, data, and documentation that implements or describes the provoc
 
 - **Scope:** `prompts.py`, `llm.py`, `handlers.py`, `docs/`, `README.md`
 - **Goal:** Zero references to `PROVOCATION_PHRASES`, `UNCERTAINTY_KEYWORDS`, or `_is_uncertain` remain in code or docs after this phase.
+
+---
+
+# Context Limitation: Bounded Per-User History
+
+This plan introduces a trimming mechanism to `src/history.py` that prevents conversation histories from growing unboundedly. Without a limit, long sessions would overflow LLM context windows and degrade performance.
+
+## Phase 1: Context Limitation (CL-01 to CL-03)
+
+Add a configurable `MAX_HISTORY_MESSAGES` constant, implement a `trim_history()` function that removes the oldest messages (FIFO), and wire it into `append_message()` so every write automatically enforces the limit.
+
+- **Strategy**: Limit by message count (Option A). FIFO removal — oldest messages dropped first.
+- **Config**: `MAX_HISTORY_MESSAGES` in `src/config.py`; easily extended later with `MAX_HISTORY_CHARS`.
+- **Isolation**: Trimming operates on a single user's history slice — no cross-user effects.
+- **Extensibility**: `trim_history()` is a standalone function, making future strategy additions (char limit, summarization) straightforward.

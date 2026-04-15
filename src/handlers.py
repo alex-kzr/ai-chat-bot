@@ -7,6 +7,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from .llm import ask_llm
+from .history import get_history, append_message
 
 router = Router()
 
@@ -29,15 +30,25 @@ async def handle_start(message: Message) -> None:
 
 @router.message(F.text)
 async def handle_text(message: Message) -> None:
-    user = message.from_user.username or message.from_user.id
-    logging.info(">>> %s: %s", user, message.text)
+    user_id = message.from_user.id
+    user_display = message.from_user.username or user_id
+    logging.info(">>> %s: %s", user_display, message.text)
+
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
-        llm_raw, bot_reply = await ask_llm(message.text)
+        history = get_history(user_id)
+        append_message(user_id, "user", message.text)
+        history = get_history(user_id)
+        llm_raw, bot_reply = await ask_llm(message.text, history=history)
     finally:
         stop.set()
         typing_task.cancel()
+
+    # Only save successful responses (not error replies)
+    if llm_raw != "[error]":
+        append_message(user_id, "assistant", bot_reply)
+
     await message.answer(bot_reply)
     asyncio.create_task(_log_response(llm_raw, bot_reply))
 

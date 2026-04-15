@@ -1,0 +1,96 @@
+<prompt>
+    <role>Senior Python Developer (LLM / AI Chatbot Engineer)</role>
+    <task>
+        Implement pseudo-memory for a Python AI chat bot by storing per-user conversation history and sending the full history to the model on each new request.
+
+        Goal
+        Add support for message history so that the bot can preserve context across multiple messages from the same user.
+
+        Functional requirements
+        1. Implement storage of conversation history between the user and the bot.
+        2. Store messages in the following format:
+        [
+        { "role": "user", "content": "..." },
+        { "role": "assistant", "content": "..." }
+        ]
+        3. On each new user request:
+        - load the existing history for that specific user;
+        - append the new user message;
+        - send the full history plus the new message to the model;
+        - save the assistant response back into that same user’s history.
+        4. Conversation history must be stored separately for each user.
+        5. The implementation must not mix dialogs of different users.
+        6. The current bot behavior should remain intact except for the added memory feature.
+
+        Expected behavior
+        Example for one user:
+        - User sends: "Hi"
+        - History sent to model:
+        [
+        { "role": "user", "content": "Hi" }
+        ]
+        - Assistant replies: "Hello!"
+        - Stored history becomes:
+        [
+        { "role": "user", "content": "Hi" },
+        { "role": "assistant", "content": "Hello!" }
+        ]
+        - Then user sends: "What did I just say?"
+        - The model should receive:
+        [
+        { "role": "user", "content": "Hi" },
+        { "role": "assistant", "content": "Hello!" },
+        { "role": "user", "content": "What did I just say?" }
+        ]
+
+        Technical requirements
+        1. Identify users by a stable unique user identifier already available in the bot.
+        2. Create a storage mechanism for history per user.
+        3. Prefer a simple and clear implementation first:
+        - in-memory dictionary for prototype, or
+        - file-based JSON storage, or
+        - SQLite if the project already uses persistent storage.
+        4. Encapsulate history operations into separate functions or a dedicated service, for example:
+        - get_history(user_id)
+        - append_message(user_id, role, content)
+        - save_history(user_id, history)
+        - clear_history(user_id) if useful
+        5. Before calling the model:
+        - retrieve the user’s existing history;
+        - append the current user message to the request payload.
+        6. After receiving the model response:
+        - append the assistant response to the same user history.
+
+        Non-functional requirements
+        1. Keep the code clean, modular, and easy to extend later.
+        2. Do not hardcode logic for only one user.
+        3. Avoid duplicated code.
+        4. Handle empty history correctly.
+        5. Add basic error handling for corrupted or missing history data.
+        6. Do not introduce breaking changes into the current bot flow.
+
+        Deliverables
+        1. Updated Python bot code with pseudo-memory support.
+        2. Clear separation of history by user.
+        3. Refactored logic so that history handling is isolated in a dedicated module/service.
+        4. Short documentation or comments explaining:
+        - where history is stored,
+        - how it is retrieved,
+        - how it is sent to the model.
+
+        Acceptance criteria
+        The task is complete only if all of the following are true:
+        1. Messages are stored in the format:
+        { "role": "...", "content": "..." }
+        2. Each user has an independent conversation history.
+        3. On every new request, the model receives:
+        - previous history for that user,
+        - plus the new user message.
+        4. After the response, the assistant message is saved in the same history.
+        5. Two different users do not share context.
+        6. The bot still works correctly after the change.
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

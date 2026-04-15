@@ -1,3 +1,22 @@
+# 📋 Tasks — Pseudo-Memory
+---
+
+## Phase 1 — Pseudo-Memory
+
+### PM-01 Create history storage module
+Create `src/history.py` with in-memory per-user history: `get_history()`, `append_message()`, `clear_history()`.
+→ [PM-01-history-storage.md](./tasks/PM-01-history-storage.md)
+
+### PM-02 Refactor ask_llm() to accept history
+Update `src/llm.py` so `ask_llm()` accepts a `history` list and sends full context (system prompt + history + new message) to Ollama.
+→ [PM-02-llm-history-support.md](./tasks/PM-02-llm-history-support.md)
+
+### PM-03 Wire history into message handler
+Update `src/handlers.py` to load user history before calling `ask_llm()` and save the assistant reply afterward.
+→ [PM-03-handler-integration.md](./tasks/PM-03-handler-integration.md)
+
+---
+
 # 📋 Tasks — Source Restructuring
 ---
 

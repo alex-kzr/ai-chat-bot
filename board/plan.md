@@ -1,3 +1,18 @@
+# Pseudo-Memory: Per-User Conversation History
+
+This plan describes the addition of conversational memory to the AI Chat Bot. The bot currently processes every message in isolation, sending only the system prompt and the current user message to the LLM. The goal is to preserve context across turns on a per-user basis.
+
+## Phase 1: Pseudo-Memory (PM-01 to PM-03)
+
+We introduce an in-memory conversation history store, refactor the LLM call to accept history, and wire everything together in the message handler. Each user gets an independent conversation context identified by their Telegram numeric user ID.
+
+- **Storage**: In-memory Python dictionary `{user_id: [messages]}`. Simple and zero-dependency for this prototype; can be swapped for SQLite or Redis later.
+- **Isolation**: User IDs are always Telegram's `message.from_user.id` (int, always present), so histories never mix.
+- **LLM integration**: `ask_llm()` is refactored to accept a history list. It prepends the system prompt and appends the new user message before sending the full context to Ollama.
+- **Handler wiring**: `handle_text()` loads history before the LLM call, then saves the assistant reply afterward.
+
+---
+
 # Refactoring: Move Executable Code to src/
 
 This plan covers moving all executable Python source files from the project root into a `src/` package directory, updating imports, and verifying the system runs correctly afterwards.

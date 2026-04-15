@@ -6,16 +6,21 @@ from . import config
 from .prompts import SYSTEM_PROMPT, ERROR_PHRASES
 
 
-async def ask_llm(user_text: str) -> tuple[str, str]:
-    """Returns (llm_raw, bot_reply). llm_raw is what the model said, bot_reply is what gets sent."""
+async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[str, str]:
+    """Returns (llm_raw, bot_reply). llm_raw is what the model said, bot_reply is what gets sent.
+
+    History should already include the current user message as its last entry.
+    """
+    history = history or []
     payload = {
         "model": config.OLLAMA_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_text},
-        ],
+        ] + history,
         "stream": False,
     }
+
+    logging.info(">>> LLM request: %s", payload["messages"])
 
     try:
         async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:

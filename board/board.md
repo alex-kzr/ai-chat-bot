@@ -7,6 +7,9 @@
 - (empty)
 
 ## Done
+- PM-03: Wire history into message handler
+- PM-02: Refactor ask_llm() to accept history
+- PM-01: Create history storage module
 - SR-01: Create src/ package directory
 - SR-02: Move source modules to src/
 - SR-03: Update internal imports in src/ modules

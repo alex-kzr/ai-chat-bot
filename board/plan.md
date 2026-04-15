@@ -46,3 +46,19 @@ Add a configurable `MAX_HISTORY_MESSAGES` constant, implement a `trim_history()`
 - **Config**: `MAX_HISTORY_MESSAGES` in `src/config.py`; easily extended later with `MAX_HISTORY_CHARS`.
 - **Isolation**: Trimming operates on a single user's history slice — no cross-user effects.
 - **Extensibility**: `trim_history()` is a standalone function, making future strategy additions (char limit, summarization) straightforward.
+
+---
+
+# History Summarization: LLM-based Context Compression
+
+This plan introduces LLM-powered summarization to replace the blunt FIFO trim. Instead of silently dropping old messages, the bot detects when history grows too long, asks the LLM to produce a concise summary of the older portion, and stores that summary alongside the most recent messages. This preserves conversation meaning while keeping context bounded.
+
+## Phase 1: History Summarization (HS-01 to HS-04)
+
+Add configurable thresholds, a dedicated summarization prompt, an isolated `src/summarizer.py` module, and wire everything into the existing handler pipeline. Each user's summarization runs independently with no cross-user effects.
+
+- **Trigger**: `SUMMARY_THRESHOLD` (default 10 messages) — when history exceeds this, summarization fires.
+- **Retention**: `SUMMARY_KEEP_RECENT` (default 4 messages) — last N messages are kept verbatim; everything older is summarized.
+- **History structure**: A special `{"role": "system", "content": "[Summary] ..."}` entry is prepended so the LLM always sees prior context.
+- **Summarization prompt**: Dedicated prompt in `src/prompts.py` instructs the LLM to produce a structured, fact-preserving summary without hallucination.
+- **Isolation**: Summarization operates on a single user's slice of `_store` — histories never mix.

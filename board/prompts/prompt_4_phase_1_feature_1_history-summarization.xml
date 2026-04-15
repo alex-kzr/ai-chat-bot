@@ -1,0 +1,106 @@
+<prompt>
+    <role>Senior Python AI Engineer / LLM Application Architect</role>
+    <task>
+        Implement a dialogue history summarization mechanism in a Python AI chatbot to limit context growth while preserving the essential meaning and continuity of the conversation.
+
+        Why this role fits
+        This task sits at the intersection of:
+        - dialogue memory and context management;
+        - LLM integration;
+        - backend architecture in Python;
+        - ensuring summarization quality without losing meaning.
+
+        Therefore, the most appropriate role is Senior Python AI Engineer / LLM Application Architect — someone who can design robust memory and context-handling systems, not just write code.
+
+        Task (from the role perspective)
+
+        As a Senior Python AI Engineer / LLM Application Architect, design and implement a mechanism for compressing dialogue history in a Python AI chatbot.
+
+        What needs to be done
+
+        1. Implement history summarization
+        When the message history becomes too long, the bot should:
+        - detect when the history exceeds a defined limit;
+        - send part (or all) of the history to the LLM with a prompt requesting a concise summary;
+        - replace older messages with the generated summary;
+        - continue the conversation using the compressed context.
+
+        2. Configure threshold
+        Implement a configurable limit triggering summarization.
+        Base rule:
+        - if history exceeds 5 messages → store a summary.
+        This value must be configurable, not hardcoded.
+
+        3. Design history structure
+        The history should support:
+        - summary of previous dialogue;
+        - several recent full messages;
+        - new user message;
+        - assistant response.
+
+        The system must preserve:
+        - main topic;
+        - user goals;
+        - key technical details;
+        - decisions and constraints.
+
+        4. Implement history replacement logic
+        After summarization:
+        - remove or compress old messages included in the summary;
+        - store the summary as a separate context item;
+        - keep recent messages intact.
+
+        5. Add summarization prompt
+        Create a dedicated prompt for LLM that:
+        - keeps only important facts;
+        - avoids hallucinations;
+        - preserves goals, context, constraints, and open questions;
+        - produces a structured, reusable summary.
+
+        Example:
+        User is developing a Telegram bot in Python and wants to add payments.
+
+        6. Update LLM request pipeline
+        For each new request:
+        - check history size;
+        - summarize if needed;
+        - build context using summary + recent messages;
+        - send to LLM;
+        - store response.
+
+        7. Per-user isolation
+        Ensure summarization works independently per user.
+
+        8. Ensure extensibility
+        Allow:
+        - changing thresholds;
+        - adjusting number of recent messages;
+        - improving summary format;
+        - recursive summarization if needed.
+
+        Requirements
+        - Clean and maintainable code;
+        - Summarization logic isolated in a module;
+        - Configurable parameters;
+        - No loss of critical context;
+        - No mixing user histories;
+        - Summary used in future LLM calls.
+
+        Expected components
+        - function to check summarization need;
+        - function to prepare history;
+        - function to call LLM for summary;
+        - function to replace history;
+        - updated context builder.
+
+        Definition of success
+        - bot retains conversation meaning;
+        - context size is reduced;
+        - history does not grow uncontrollably;
+        - response quality remains stable;
+        - system is configurable and extensible.
+    </task>
+    <output>
+        Create plan and tasks using board/instructions/new-features-workflow.md
+    </output>
+</prompt>

@@ -67,3 +67,14 @@ def clear_history(user_id: int) -> None:
     """
     if user_id in _store:
         del _store[user_id]
+
+
+def replace_history(user_id: int, messages: list[dict]) -> None:
+    """
+    Replace the entire conversation history for a user.
+
+    Args:
+        user_id: Telegram user ID
+        messages: New list of message dictionaries
+    """
+    _store[user_id] = list(messages)

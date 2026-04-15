@@ -92,3 +92,26 @@ Add `trim_history(user_id)` to `src/history.py` that removes oldest messages (FI
 ### CL-03 Call trim_history() inside append_message()
 Update `append_message()` in `src/history.py` to call `trim_history()` after every append, enforcing the limit automatically on every write.
 → [CL-03-wire-trim-into-append.md](./tasks/CL-03-wire-trim-into-append.md)
+
+---
+
+# 📋 Tasks — History Summarization
+---
+
+## Phase 1 — History Summarization
+
+### HS-01 Add summarization config constants
+Add `SUMMARY_THRESHOLD` and `SUMMARY_KEEP_RECENT` to `src/config.py` so summarization thresholds are centrally configurable.
+→ [HS-01-summarization-config.md](./tasks/HS-01-summarization-config.md)
+
+### HS-02 Add summarization prompt to prompts.py
+Add a `SUMMARIZATION_PROMPT` template to `src/prompts.py` that instructs the LLM to produce a structured, fact-preserving summary (topics, goals, constraints, open questions) without hallucination.
+→ [HS-02-summarization-prompt.md](./tasks/HS-02-summarization-prompt.md)
+
+### HS-03 Create summarizer module
+Create `src/summarizer.py` with: `needs_summarization(user_id)`, `get_messages_to_summarize(user_id)`, `call_llm_for_summary(messages)`, and `compress_history(user_id)`.
+→ [HS-03-summarizer-module.md](./tasks/HS-03-summarizer-module.md)
+
+### HS-04 Wire summarization into handler pipeline
+Update `src/handlers.py` to call `compress_history()` before each LLM request, ensuring the context stays bounded and the summary is included in every subsequent call.
+→ [HS-04-wire-summarization.md](./tasks/HS-04-wire-summarization.md)

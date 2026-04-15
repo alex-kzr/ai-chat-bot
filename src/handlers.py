@@ -8,6 +8,7 @@ from aiogram.types import Message
 
 from .llm import ask_llm
 from .history import get_history, append_message
+from .summarizer import compress_history, needs_summarization
 
 router = Router()
 
@@ -38,6 +39,9 @@ async def handle_text(message: Message) -> None:
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
         history = get_history(user_id)
+        # Compress history if threshold exceeded, before adding new message
+        if needs_summarization(user_id):
+            await compress_history(user_id)
         append_message(user_id, "user", message.text)
         history = get_history(user_id)
         llm_raw, bot_reply = await ask_llm(message.text, history=history)

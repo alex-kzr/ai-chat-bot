@@ -1,12 +1,16 @@
 # BOARD
 
 ## To Do
-(empty)
+- (empty)
 
 ## In Progress
 - (empty)
 
 ## Done
+- HS-04: Wire summarization into handler pipeline
+- HS-03: Create summarizer module
+- HS-02: Add summarization prompt to prompts.py
+- HS-01: Add summarization config constants
 - CL-03: Call trim_history() inside append_message()
 - CL-02: Implement trim_history() in history.py
 - CL-01: Add MAX_HISTORY_MESSAGES constant to config

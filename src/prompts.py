@@ -20,3 +20,115 @@ SUMMARIZATION_PROMPT: str = (
     "- Write in the same language the user is using\n\n"
     "Output only the summary — no preamble, no meta-commentary, no closing remarks."
 )
+
+
+def build_agent_prompt(tools: list) -> str:
+    """Build an agent system prompt with tool specifications.
+
+    Args:
+        tools: List of tool specs, each with 'name', 'description', and 'args_schema'.
+
+    Returns:
+        Complete system prompt for the agent loop.
+    """
+    tools_section = _format_tools(tools)
+    internet_tool_name = _find_internet_tool_name(tools)
+
+    prompt = f"""You are an agent that solves user tasks using deterministic tool calls.
+
+Your task is to answer the user's question. You have access to the following tools:
+
+{tools_section}
+
+## Protocol
+
+On each turn, emit exactly one JSON object in one of these shapes:
+
+1) Tool call:
+{{"tool": "tool_name", "args": {{...}}}}
+2) Final answer:
+{{"final_answer": "your complete answer to the user"}}
+
+## Critical Rules
+
+- Emit **exactly one JSON object** and nothing else — no markdown, no explanation.
+- Do not include keys other than `tool` and `args` for tool calls.
+- Tool observations are provided by the system; never fabricate them.
+- If a tool fails, analyze the error and try a different approach or tool.
+- Continue looping until you can confidently answer the user's question.
+- For tool calls, the "tool" value must be one of the listed tool names. Never output "none".
+- For `http_request` observations, expect a structured JSON payload with `url`, `status`, `title`, `main_text`, and `resources`.
+- If the task requires internet access, you must call the internet tool named **{internet_tool_name}**.
+- Do not write "I cannot access the internet" while this tool is available.
+- If you need web data, return the tool call JSON in this exact shape:
+  {{"tool": "{internet_tool_name}", "args": {{"url": "https://..."}}}}
+
+## Example
+
+User task: "What is 25 times 4?"
+
+Your response:
+{{"tool": "calculator", "args": {{"expression": "25 * 4"}}}}
+
+System observation:
+Observation: 100
+
+Your next response:
+{{"final_answer": "25 times 4 equals 100."}}
+
+Internet example:
+{{"tool": "{internet_tool_name}", "args": {{"url": "https://github.com/alex-kzr/ai-chat-bot"}}}}
+
+Begin reasoning and emit your first JSON object."""
+
+    return prompt
+
+
+def _format_tools(tools: list) -> str:
+    """Format a list of tool specs into a readable section."""
+    if not tools:
+        return "(No tools available)"
+
+    lines = []
+    for i, tool in enumerate(tools, 1):
+        name = tool.get("name", "unknown")
+        description = tool.get("description", "no description")
+        args_schema = tool.get("args_schema", {})
+
+        lines.append(f"{i}. **{name}**")
+        lines.append(f"   Description: {description}")
+
+        if args_schema:
+            lines.append(f"   Arguments: {_format_schema(args_schema)}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _format_schema(schema: dict) -> str:
+    """Format a JSON schema concisely."""
+    if not schema:
+        return "{}"
+
+    parts = []
+    for key, value in schema.items():
+        if isinstance(value, dict):
+            type_str = value.get("type", "unknown")
+            desc = value.get("description", "")
+            if desc:
+                parts.append(f'"{key}" ({type_str}): {desc}')
+            else:
+                parts.append(f'"{key}" ({type_str})')
+        else:
+            parts.append(f'"{key}"')
+
+    return "{" + ", ".join(parts) + "}"
+
+
+def _find_internet_tool_name(tools: list) -> str:
+    """Return the configured internet-capable tool name if present."""
+    for tool in tools:
+        name = str(tool.get("name", "")).strip()
+        if name == "http_request":
+            return name
+    return "http_request"

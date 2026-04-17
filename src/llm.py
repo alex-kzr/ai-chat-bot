@@ -1,56 +1,142 @@
+from __future__ import annotations
+
 import logging
 import random
-import httpx
 
-from . import config
-from .prompts import ERROR_PHRASES
 from .context_logging import extract_context, count_context_tokens, log_context
+from .contracts import ChatMessage, LLMReply
+from .errors import OllamaProtocolError, OllamaTransportError
+from .prompts import ERROR_PHRASES
+
+logger = logging.getLogger(__name__)
 
 
-async def ask_llm(user_text: str, history: list[dict] | None = None) -> tuple[str, str]:
-    """Returns (llm_raw, bot_reply). llm_raw is what the model said, bot_reply is what gets sent.
+class _ContentStreamDebugLogger:
+    def __init__(self, target_logger: logging.Logger) -> None:
+        self._logger = target_logger
+        self._buffer = ""
 
-    History should already include the current user message as its last entry.
-    """
+    def push(self, chunk: str) -> None:
+        if not chunk:
+            return
+        self._buffer += chunk
+        self._flush_complete_lines()
+
+    def finalize(self) -> None:
+        if self._buffer:
+            self._logger.debug("<<< LLM: %s", self._buffer)
+        self._buffer = ""
+
+    def _flush_complete_lines(self) -> None:
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            self._logger.debug("<<< LLM: %s", line)
+
+
+class _ThinkingStreamDebugLogger:
+    def __init__(self, target_logger: logging.Logger) -> None:
+        self._logger = target_logger
+        self._buffer = ""
+
+    def push(self, chunk: str) -> None:
+        if not chunk:
+            return
+        self._buffer += chunk
+        self._flush_complete_lines()
+
+    def finalize(self) -> None:
+        tail = self._buffer.strip()
+        if tail:
+            self._logger.debug("<<< THINK: %s", tail)
+        self._buffer = ""
+
+    def _flush_complete_lines(self) -> None:
+        while "\n" in self._buffer:
+            line, self._buffer = self._buffer.split("\n", 1)
+            clean_line = line.strip()
+            if clean_line:
+                self._logger.debug("<<< THINK: %s", clean_line)
+
+
+def _messages_to_prompt(messages: list[ChatMessage]) -> str:
+    prompt_parts: list[str] = []
+    for msg in messages:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role == "system":
+            prompt_parts.append(content)
+        elif role == "user":
+            prompt_parts.append(f"User: {content}")
+        elif role == "assistant":
+            prompt_parts.append(f"Assistant: {content}")
+    return "\n\n".join(prompt_parts) + "\n\nAssistant:"
+
+
+async def ask_llm(user_text: str, history: list[ChatMessage] | None = None, user_id: str | int | None = None) -> LLMReply:
+    from .runtime import get_runtime
+
+    runtime = get_runtime()
+    settings = runtime.settings
     history = history or []
-    system_messages = []
-    if config.SYSTEM_PROMPT_ENABLED and not (history and history[0].get("role") == "system"):
-        system_messages = [{"role": "system", "content": config.SYSTEM_PROMPT}]
 
-    payload = {
-        "model": config.OLLAMA_MODEL,
-        "messages": system_messages + history,
-        "stream": False,
-    }
+    messages: list[ChatMessage] = []
+    if settings.system_prompt.enabled:
+        messages.append({"role": "system", "content": settings.system_prompt.prompt})
+    messages.extend(history)
 
-    logging.info(">>> LLM request: %s", payload["messages"])
-
-    # Log context using structured context logging infrastructure
-    if config.CONTEXT_LOGGING_ENABLED:
+    if settings.logging.context_enabled:
         try:
             context_data = extract_context(
-                messages=payload["messages"],
-                model_name=config.OLLAMA_MODEL,
-                user_id=None,  # Not available in current function signature
+                messages=messages,
+                model_name=settings.chat_model,
+                user_id=str(user_id) if user_id is not None else None,
             )
-            # Add token count to context
-            token_count = count_context_tokens(payload["messages"])
-            context_data["statistics"]["token_count"] = token_count
-
+            context_data["statistics"]["token_count"] = count_context_tokens(messages)
             log_context(context_data, level="debug")
-        except Exception as e:
-            # Don't let logging errors break the request flow
-            logging.warning("Failed to log context: %s", e)
+        except Exception as exc:
+            logger.warning("Failed to log context: %s", exc)
 
+    prompt = _messages_to_prompt(messages)
+    debug_enabled = logger.isEnabledFor(logging.DEBUG)
+    thinking_debug_logger = _ThinkingStreamDebugLogger(logger) if debug_enabled else None
+    content_debug_logger = _ContentStreamDebugLogger(logger) if debug_enabled else None
     try:
-        async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
-            response = await client.post(f"{config.OLLAMA_URL}/api/chat", json=payload)
-            response.raise_for_status()
-            data = response.json()
-            llm_raw = data["message"]["content"].strip()
+        content, thinking = await runtime.ollama.generate_streamed_text(
+            prompt,
+            model=settings.chat_model,
+            on_thinking_chunk=thinking_debug_logger.push if thinking_debug_logger is not None else None,
+            on_content_chunk=content_debug_logger.push if content_debug_logger is not None else None,
+            on_stream_done=content_debug_logger.finalize if content_debug_logger is not None else None,
+        )
+    except (OllamaTransportError, OllamaProtocolError) as exc:
+        if content_debug_logger is not None:
+            content_debug_logger.finalize()
+        logger.error("LLM error: %s", exc)
+        return LLMReply(llm_raw="[error]", bot_reply=random.choice(ERROR_PHRASES), thinking="")
+    finally:
+        if thinking_debug_logger is not None:
+            thinking_debug_logger.finalize()
 
-        return llm_raw, llm_raw
-    except Exception as e:
-        logging.error("LLM error: %s", e)
-        error_phrase = random.choice(ERROR_PHRASES)
-        return "[error]", error_phrase
+    content = content.strip()
+    thinking = thinking.strip()
+    if not content:
+        if thinking:
+            logger.warning("LLM returned thinking-only stream without final answer text")
+            try:
+                fallback_content = (
+                    await runtime.ollama.generate_once(
+                        prompt,
+                        model=settings.chat_model,
+                    )
+                ).strip()
+            except (OllamaTransportError, OllamaProtocolError) as exc:
+                logger.error("LLM fallback error after thinking-only stream: %s", exc)
+                fallback_content = ""
+            if fallback_content:
+                llm_raw = fallback_content + ("\n\n" + thinking if thinking else "")
+                return LLMReply(llm_raw=llm_raw, bot_reply=fallback_content, thinking=thinking)
+        else:
+            logger.warning("LLM returned empty response")
+        return LLMReply(llm_raw="[error]", bot_reply=random.choice(ERROR_PHRASES), thinking="")
+    llm_raw = content + ("\n\n" + thinking if thinking else "")
+    return LLMReply(llm_raw=llm_raw, bot_reply=content, thinking=thinking)

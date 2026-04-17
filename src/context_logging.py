@@ -1,14 +1,101 @@
 import logging
 import json
-import os
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from src import config
+from src.config import Settings
 
 # Module-level singleton logger
 _context_logger: Optional[logging.Logger] = None
+_context_settings: Optional[Settings] = None
+
+
+def _close_logger_handlers(logger: logging.Logger) -> None:
+    """Detach and close all handlers to release resources and file locks."""
+    for handler in list(logger.handlers):
+        try:
+            handler.flush()
+        except Exception:
+            pass
+        try:
+            handler.close()
+        except Exception:
+            pass
+        logger.removeHandler(handler)
+
+
+def _release_file_logger_if_needed(logger: logging.Logger) -> None:
+    """Release file handlers so tests/short-lived runs don't keep file locks."""
+    global _context_logger
+    if any(isinstance(handler, logging.FileHandler) for handler in logger.handlers):
+        _close_logger_handlers(logger)
+        _context_logger = None
+
+
+def configure_context_logging(settings: Settings) -> None:
+    """Set explicit settings used by the context logger."""
+    global _context_settings, _context_logger
+    _context_settings = settings
+    _context_logger = None
+
+
+def _effective_settings() -> Settings:
+    if _context_settings is not None:
+        return _context_settings
+    try:
+        settings = config.get_settings()
+        # Backward compatibility for tests/legacy callers that monkeypatch
+        # module-level config attributes directly (e.g. config.LOG_FILE_PATH).
+        # We only honor explicitly set attributes on the module object.
+        cfg_vars = vars(config)
+        has_logging_overrides = any(
+            key in cfg_vars
+            for key in (
+                "CONTEXT_LOGGING_ENABLED",
+                "LOG_LEVEL",
+                "LOG_DESTINATION",
+                "LOG_FILE_PATH",
+                "LOG_FORMAT",
+                "SHOW_THINKING",
+                "TOKEN_COUNT_STRATEGY",
+                "HEURISTIC_TOKEN_RATIO",
+            )
+        )
+        if has_logging_overrides:
+            logging_settings = replace(
+                settings.logging,
+                level=str(cfg_vars.get("LOG_LEVEL", settings.logging.level)),
+                context_enabled=bool(cfg_vars.get("CONTEXT_LOGGING_ENABLED", settings.logging.context_enabled)),
+                destination=str(cfg_vars.get("LOG_DESTINATION", settings.logging.destination)),
+                file_path=str(cfg_vars.get("LOG_FILE_PATH", settings.logging.file_path)),
+                fmt=str(cfg_vars.get("LOG_FORMAT", settings.logging.fmt)),
+                show_thinking=bool(cfg_vars.get("SHOW_THINKING", settings.logging.show_thinking)),
+                token_count_strategy=str(
+                    cfg_vars.get("TOKEN_COUNT_STRATEGY", settings.logging.token_count_strategy)
+                ),
+                heuristic_token_ratio=int(
+                    cfg_vars.get("HEURISTIC_TOKEN_RATIO", settings.logging.heuristic_token_ratio)
+                ),
+            )
+            settings = replace(settings, logging=logging_settings)
+        return settings
+    except Exception:
+        return config.load_settings(
+            env={
+                "BOT_TOKEN": "test-token",
+                "OLLAMA_URL": "http://localhost:11434",
+                "OLLAMA_MODEL": "qwen3:0.6b",
+            },
+            load_dotenv_file=False,
+        )
+
+
+class LevelAwareFormatter(logging.Formatter):
+    def __init__(self) -> None:
+        super().__init__(fmt="%(asctime)s | %(levelname)s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
 
 def setup_context_logger() -> logging.Logger:
@@ -26,34 +113,33 @@ def setup_context_logger() -> logging.Logger:
     if _context_logger is not None:
         return _context_logger
 
-    if not config.CONTEXT_LOGGING_ENABLED:
+    settings = _effective_settings()
+
+    if not settings.logging.context_enabled:
         # Return a null logger if logging is disabled
         _context_logger = logging.getLogger("context_null")
+        _close_logger_handlers(_context_logger)
         _context_logger.addHandler(logging.NullHandler())
         return _context_logger
 
     _context_logger = logging.getLogger("context_logger")
-    _context_logger.setLevel(logging.DEBUG)
+    _context_logger.setLevel(getattr(logging, settings.logging.level.upper(), logging.INFO))
+    _context_logger.propagate = False
 
     # Remove any existing handlers to avoid duplicates
-    _context_logger.handlers.clear()
+    _close_logger_handlers(_context_logger)
 
     # Create appropriate handler based on configuration
-    if config.LOG_DESTINATION.lower() == "file":
+    if settings.logging.destination.lower() == "file":
         # Ensure logs directory exists
-        log_path = Path(config.LOG_FILE_PATH)
+        log_path = Path(settings.logging.file_path)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        handler = logging.FileHandler(config.LOG_FILE_PATH, mode='a')
+        handler = logging.FileHandler(settings.logging.file_path, mode='a', delay=True)
     else:  # Default to console
         handler = logging.StreamHandler()
 
-    # Set up formatter based on configuration
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    handler.setFormatter(formatter)
+    handler.setFormatter(LevelAwareFormatter())
     _context_logger.addHandler(handler)
 
     return _context_logger
@@ -71,7 +157,7 @@ def format_log_entry(data: Dict[str, Any], format_type: Optional[str] = None) ->
         str: Formatted log entry
     """
     if format_type is None:
-        format_type = config.LOG_FORMAT.lower()
+        format_type = _effective_settings().logging.fmt.lower()
 
     if format_type == "json":
         return _format_json(data)
@@ -184,14 +270,41 @@ def log_context(data: Dict[str, Any], level: str = "info") -> None:
     formatted_entry = format_log_entry(data)
 
     # Log at the appropriate level
-    if level.lower() == "debug":
-        logger.debug(formatted_entry)
-    elif level.lower() == "warning":
-        logger.warning(formatted_entry)
-    elif level.lower() == "error":
-        logger.error(formatted_entry)
-    else:  # Default to info
-        logger.info(formatted_entry)
+    try:
+        if level.lower() == "debug":
+            logger.debug(formatted_entry)
+        elif level.lower() == "warning":
+            logger.warning(formatted_entry)
+        elif level.lower() == "error":
+            logger.error(formatted_entry)
+        else:  # Default to info
+            logger.info(formatted_entry)
+    finally:
+        _release_file_logger_if_needed(logger)
+
+
+def log_agent_event(run_id: str, event: str, *, level: str = "info", **fields: Any) -> None:
+    """Emit a deterministic single-line structured log for agent runtime events."""
+    logger = setup_context_logger()
+    record = {
+        "kind": "agent_event",
+        "run_id": run_id,
+        "event": event,
+        **fields,
+    }
+    message = json.dumps(record, ensure_ascii=False, sort_keys=True, default=str)
+
+    try:
+        if level.lower() == "debug":
+            logger.debug(message)
+        elif level.lower() == "warning":
+            logger.warning(message)
+        elif level.lower() == "error":
+            logger.error(message)
+        else:
+            logger.info(message)
+    finally:
+        _release_file_logger_if_needed(logger)
 
 
 def extract_context(
@@ -359,7 +472,7 @@ def count_tokens(text: str) -> int:
         return 0
 
     # Try tiktoken if strategy is configured for it and available
-    if config.TOKEN_COUNT_STRATEGY.lower() == "tiktoken":
+    if _effective_settings().logging.token_count_strategy.lower() == "tiktoken":
         tokenizer = _try_import_tiktoken()
         if tokenizer:
             try:
@@ -391,7 +504,8 @@ def _count_tokens_heuristic(text: str) -> int:
     # Count characters and divide by the configured ratio
     # Round up to be conservative
     char_count = len(text.encode("utf-8"))  # Use byte count for unicode safety
-    token_estimate = (char_count + config.HEURISTIC_TOKEN_RATIO - 1) // config.HEURISTIC_TOKEN_RATIO
+    ratio = _effective_settings().logging.heuristic_token_ratio
+    token_estimate = (char_count + ratio - 1) // ratio
 
     return token_estimate
 

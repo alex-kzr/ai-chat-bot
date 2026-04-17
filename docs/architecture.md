@@ -1,84 +1,85 @@
 # Architecture
 
-## High-level data flow
+## Runtime Paths
 
+### Standard chat path
+
+```text
+User -> Telegram -> handlers.handle_text
+     -> ChatOrchestrator
+     -> ConversationService (trim/summarize)
+     -> OllamaGateway (/api/generate stream)
+     -> User
 ```
-User (Telegram)
-      │  text message
-      ▼
- aiogram polling
-      │
-      ▼
- handlers.py — handle_text()
-      │  user text
-      ▼
- llm.py — ask_llm()
-      │  POST /api/chat  (system prompt + user text)
-      ▼
- Ollama REST API
-      │  JSON response → llm_raw
-      │  (or ERROR_PHRASE on exception)
-      ▼
- handlers.py — message.answer()
-      │
-      ▼
-User (Telegram)
+
+### Agent path (`/agent` command or URL in text)
+
+```text
+User -> Telegram -> handlers
+     -> AgentOrchestrator -> agent.run_agent
+     -> OllamaGateway (/api/generate)
+     -> parser (tool/args | final_answer)
+     -> tool execution (optional)
+     -> observation feedback
+     -> ... repeat ...
+     -> final_answer -> User
 ```
+
+User-visible contract on agent path:
+- No intermediate step messages
+- Only final answer, or controlled fallback if loop cannot complete
 
 ---
 
-## Module responsibilities
+## Core Modules
 
-### `bot.py` — Entry point
-
-- Runs `select_model()` before the event loop starts (interactive CLI model selection).
-- Creates `Bot` and `Dispatcher`, registers the router.
-- Calls `dp.start_polling(bot)` — the main event loop.
-
-### `config.py` — Configuration
-
-- Single source of truth for all environment-driven settings.
-- Loaded once at import time via `python-dotenv`.
-- `OLLAMA_MODEL` is the only field mutated at runtime (by `select_model()`).
-
-### `handlers.py` — Telegram layer
-
-- Owns the aiogram `Router`.
-- `handle_start`: responds to `/start` with a welcome message.
-- `handle_text`: orchestrates the request pipeline, manages the typing indicator.
-- `_keep_typing`: background coroutine that resends `TYPING` action every 4 s.
-- `_log_response`: async log helper fired as a fire-and-forget task after reply is sent.
-
-### `llm.py` — LLM integration
-
-- `ask_llm(user_text)` → `(llm_raw, bot_reply)`: the only public interface.
-- Builds the Ollama chat payload (system prompt + user message).
-- Returns the LLM response and an error phrase on exception.
-
-### `prompts.py` — Personality data
-
-- `SYSTEM_PROMPT`: instructs the model to be helpful and concise.
-- `ERROR_PHRASES`: 3 fallback messages used on LLM errors.
+- `src/bootstrap.py`: synchronous startup bootstrap (settings, model selection, runtime wiring)
+- `src/runtime.py`: application container for shared services/dependencies
+- `src/handlers.py`: Telegram integration, typing indicator, routing
+- `src/services/chat_orchestrator.py`: chat/URL routing orchestration for handlers
+- `src/conversation.py`: in-memory conversation state + summarization boundary
+- `src/ollama_gateway.py`: shared Ollama transport boundary (tags/chat/generate)
+- `src/llm.py`: chat reply composition built on top of the gateway
+- `src/agent/core.py`: iterative agent loop (parsing + tool loop)
+- `src/agent/parser.py`: strict JSON contract parsing
+- `src/agent/tools.py`: calculator + deterministic HTTP tooling
+- `src/prompts.py`: system prompts (chat and agent)
+- `src/context_logging.py`: structured context and agent event logging
+- `src/config.py`: typed environment-backed settings (`Settings`) with explicit runtime overrides (for selected chat model)
 
 ---
 
-## Concurrency model
+## Agent State Model
 
-The bot is fully async (Python `asyncio`). aiogram drives the event loop. `httpx.AsyncClient` is used for all HTTP calls so Ollama requests do not block the event loop. The typing indicator runs as a separate `asyncio.Task` cancelled in the `finally` block of `handle_text`.
+`AgentResult`:
+- `run_id`
+- `final_answer`
+- `steps`
+- `stopped_reason` (`final`, `max_steps`, `error`)
+
+`Step`:
+- `action`
+- `args`
+- `observation`
 
 ---
 
-## Deployment topology
+## Determinism and Safety
 
-```
-┌─────────────────────────────┐
-│  Developer machine / server │
-│                             │
-│  python bot.py              │  ◄─── Telegram Bot API (polling)
-│                             │
-│  ollama serve               │
-│  (localhost:11434)          │
-└─────────────────────────────┘
-```
+- Tool protocol strictly enforced (`tool`, `args`, `final_answer`)
+- Parser gracefully handles malformed model output
+- HTTP tool bounded by timeout and byte limits
+- Resource loading is same-origin and limit-controlled
+- Structured logging with run correlation supports reproducible debugging
 
-No external database. No message queue. No webhook. Ollama and the bot process run on the same host.
+---
+
+## Observability
+
+Agent emits structured JSON-line events with shared `run_id`:
+- step lifecycle
+- parse failures/retries
+- tool call timing and outcome
+- terminal reason
+
+This enables end-to-end traceability for multi-step runs.

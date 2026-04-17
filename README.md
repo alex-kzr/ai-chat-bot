@@ -16,6 +16,15 @@ python main.py
 
 Full setup and troubleshooting: [docs/usage-guide.md](docs/usage-guide.md)
 
+## Dev checks
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+ruff check src tests
+mypy src
+```
+
 ---
 
 ## Documentation
@@ -42,4 +51,4 @@ User message → Ollama LLM → reply
                error? → error phrase
 ```
 
-Chat history is **not stored** — every message is independent.
+Chat history is stored **in memory per user** with deterministic trimming and summarization.

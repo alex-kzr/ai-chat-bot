@@ -4,3 +4,7 @@
 __pycache__/
 *.pyc
 *.pyo
+.agents/skills/
+!.agents/skills/board-new-plan-creator/
+!.agents/skills/board-task-executor/
+bruno

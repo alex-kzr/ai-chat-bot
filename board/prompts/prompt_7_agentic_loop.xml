@@ -1,0 +1,87 @@
+<prompt>
+    <role>AI / LLM Engineer responsible for designing and implementing an agentic loop for a Python-based AI bot</role>
+    <task>
+        # Implement Agent Loop with Tool Execution
+
+        ## Objective
+        Implement an agent loop that enables the system to iteratively interact with an LLM and execute external tools based on model instructions.
+
+        ## Target Flow
+        User → LLM → Agent → Tool → Result → LLM → ... → User
+
+        ## Description
+
+        The system must process a user request through an iterative loop:
+
+        1. The user sends a request.
+        2. The bot sends this request to the LLM along with a system prompt that:
+        - Describes all available tools
+        - Defines the expected response format
+
+        3. The LLM returns a response, which can be one of two types:
+
+        ### 1. Final Answer
+        If the response contains a final answer, the bot must immediately return it to the user.
+
+        Example:
+        {
+        "final_answer": "..."
+        }
+
+        ### 2. Tool Invocation
+        If the LLM requests a tool execution, the response will follow this format:
+
+        {
+        "tool": "http_request",
+        "args": {
+        ...
+        }
+        }
+
+        In this case:
+        - The bot must pass control to the agent
+        - The agent must execute the requested tool
+        - The tool result must be returned back to the LLM as input for the next iteration
+
+        ## Tool Requirements
+
+        ### HTTP Request Tool
+
+        The system must implement a tool capable of:
+
+        - Performing HTTP requests
+        - Fetching full HTML content
+        - Resolving and loading related resources:
+        - JavaScript
+        - CSS
+        - Other required assets (if applicable)
+        - Returning a processed result suitable for LLM consumption
+
+        ## Agent Responsibilities
+
+        - Parse LLM responses
+        - Detect whether it is a final answer or tool call
+        - Execute tools when requested
+        - Pass tool results back to the LLM
+        - Continue the loop until a final answer is received
+
+        ## Constraints
+
+        - The loop must not return a response to the user until a `final_answer` is received
+        - All tool interactions must be deterministic and logged
+        - The system must handle malformed LLM responses gracefully
+
+        ## Expected Outcome
+
+        A working agent loop implementation that:
+        - Supports iterative reasoning
+        - Executes tools dynamically
+        - Produces a final response only when the LLM signals completion
+        - All interactions are logged for debugging and analysis
+        - All documents and code are well-structured and maintainable
+        - All documentation is updated to reflect the new agent loop functionality
+    </task>
+    <output>
+        Create plan and tasks
+    </output>
+</prompt>

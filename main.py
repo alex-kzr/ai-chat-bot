@@ -1,8 +1,4 @@
-import asyncio
-from src.bot import main
+from src.bootstrap import run
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    run()

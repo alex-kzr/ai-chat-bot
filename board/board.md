@@ -1,4 +1,4 @@
-# BOARD
+# Kanban Board
 
 ## To Do
 - (empty)
@@ -7,6 +7,27 @@
 - (empty)
 
 ## Done
+- QG-03: Add static quality tooling and documentation sync
+- QG-02: Expand automated test coverage for critical flows
+- QG-01: Add explicit contracts and domain exceptions
+- RS-03: Slim Telegram handlers and agent orchestration
+- RS-02: Encapsulate conversation state and summarization
+- RS-01: Extract Ollama gateway and request models
+- CB-03: Centralize logging and runtime wiring
+- CB-02: Refactor startup and model selection flow
+- CB-01: Introduce typed settings object
+- RLD-02: Update documentation and validation scenarios
+- RLD-01: Add deterministic structured logging for loop and tool calls
+- HT-03: Build an LLM-friendly processed page result
+- HT-02: Add linked resource discovery and controlled loading
+- HT-01: Implement a deterministic HTML fetch pipeline
+- LC-03: Enforce final-answer-only user replies
+- LC-02: Refactor the core loop to execute tool calls until `final_answer`
+- LC-01: Align prompt and parser with the required JSON contract
+- TM-04: Show thinking block in Telegram reply
+- TM-03: Log thinking content at DEBUG level
+- TM-02: Handle thinking field in ask_llm()
+- TM-01: Add OLLAMA_THINK config constant
 - IMR-03: Implement validation and testing
 - IMR-02: Integrate logging into request pipeline
 - IMR-01: Identify LLM request boundary

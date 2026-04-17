@@ -1,116 +1,136 @@
 # API Reference
 
-The bot integrates with two external APIs: the Telegram Bot API (via aiogram) and the Ollama REST API (via httpx).
+The bot integrates with three runtime interfaces:
+
+1. Telegram Bot API (via `aiogram`)
+2. Ollama REST API (via `httpx`)
+3. Internal agent tool interface (`src/agent/tools.py`)
 
 ---
 
 ## Telegram Bot API
 
-Accessed indirectly through the aiogram library. The bot uses **long-polling** only.
-
 ### Incoming updates handled
 
 | Update type | Filter | Handler |
 |---|---|---|
-| Message with `/start` command | `Command("start")` | `handle_start` |
-| Message with text content | `F.text` | `handle_text` |
+| `/start` command | `Command("start")` | `handle_start` |
+| `/agent <task>` command | `Command("agent")` | `handle_agent` |
+| Text message | `F.text` | `handle_text` |
 
-All other update types (photos, voice, stickers, documents, etc.) are silently ignored — aiogram's default behaviour when no handler matches.
+Notes:
+- URL-containing text is routed through the agent loop.
+- Non-text updates are ignored by default (no matching handler).
 
 ### Outgoing calls made
 
-| Method | When | Content |
-|---|---|---|
-| `sendMessage` | After LLM responds | `bot_reply` text |
-| `sendChatAction` | While LLM is running | `typing` action, repeated every 4 s |
-
-### Bot commands (registered with BotFather)
-
-| Command | Description |
+| Method | Purpose |
 |---|---|
-| `/start` | Display welcome message |
+| `sendMessage` | Sends final response to user |
+| `sendChatAction` | Sends typing indicator while processing |
+
+Agent-mode user response contract:
+- User sees only `final_answer`
+- If loop ends without `final_answer`, user receives a controlled fallback message
 
 ---
 
 ## Ollama REST API
 
-Base URL configured via `OLLAMA_URL` (default `http://localhost:11434`).
-
 ### `GET /api/tags`
 
-Used once at startup by `select_model()` to enumerate available models.
-
-**Request:** No body, no auth.
-
-**Response:**
-```json
-{
-  "models": [
-    {"name": "qwen3:0.6b"},
-    {"name": "gemma4:12b"}
-  ]
-}
-```
-
-Bot reads `response.json()["models"]` and extracts `name` from each item.
-
-**Timeout:** 5 seconds (hardcoded in `bot.py`). On failure, startup continues with the default model.
-
----
+Used at startup (`select_model`) to list available models.
 
 ### `POST /api/chat`
 
-Called once per user message by `ask_llm()`.
+Used by regular chat path (`ask_llm`) for non-agent text handling.
 
-**Request body:**
+### `POST /api/generate`
+
+Used by the agent loop (`src/agent/core.py`) with a prompt assembled from:
+- system instructions
+- user task
+- iterative observations
+
+The model must return one JSON object per turn:
+
 ```json
-{
-  "model": "<config.OLLAMA_MODEL>",
-  "messages": [
-    {
-      "role": "system",
-      "content": "You are a helpful assistant. Answer clearly and concisely in the user's language."
-    },
-    {
-      "role": "user",
-      "content": "<user message text>"
-    }
-  ],
-  "stream": false
-}
+{"tool":"tool_name","args":{}}
 ```
 
-**Response body (success):**
+or
+
+```json
+{"final_answer":"..."}
+```
+
+---
+
+## Internal Agent Contract
+
+Parser output types (`src/agent/parser.py`):
+- `ActionStep(action, args)` for `{"tool","args"}`
+- `FinalStep(final_answer)` for `{"final_answer"}`
+- `ParseError(reason, raw)` for malformed/invalid output
+
+Loop stop conditions (`src/agent/core.py`):
+- `final` (got `final_answer`)
+- `max_steps` (reached `AGENT_MAX_STEPS`)
+- `error` (terminal parse/LLM failure)
+
+---
+
+## `http_request` Tool Output
+
+`http_request` returns a structured JSON observation string with stable top-level fields:
+
 ```json
 {
-  "message": {
-    "role": "assistant",
-    "content": "<generated text>"
+  "url": "https://example.com",
+  "request": {"method": "GET"},
+  "status": {"code": 200, "reason": "OK"},
+  "title": "Example Domain",
+  "main_text": "...",
+  "main_text_truncated": false,
+  "html": {
+    "content_type": "text/html; charset=utf-8",
+    "encoding": "utf-8",
+    "bytes_read": 12345,
+    "truncated": false
+  },
+  "resources": {
+    "policy": {
+      "origin": "https://example.com",
+      "same_origin_only": true,
+      "max_resource_count": 8,
+      "max_resource_bytes": 120000,
+      "max_total_resource_bytes": 400000
+    },
+    "discovered_count": 3,
+    "loaded": [],
+    "skipped": [],
+    "failed": []
   }
 }
 ```
 
-Bot reads `response.json()["message"]["content"]` and strips whitespace.
+Tool error format:
 
-**Timeout:** `config.OLLAMA_TIMEOUT` seconds (default 120).
-
-**Error handling:** Any exception (connection error, timeout, non-2xx status) is caught; the bot replies with a random `ERROR_PHRASE` and logs the exception.
+```text
+[tool_error] <deterministic reason>
+```
 
 ---
 
-## Internal Python interface
+## Key Config Knobs
 
-### `ask_llm(user_text: str) -> tuple[str, str]`
-
-The only public function in `llm.py`.
-
-| Parameter | Type | Description |
-|---|---|---|
-| `user_text` | `str` | Raw message text from Telegram user |
-
-**Returns** `(llm_raw, bot_reply)`:
-
-| Field | Type | Description |
-|---|---|---|
-| `llm_raw` | `str` | Raw model output, or `"[error]"` on exception |
-| `bot_reply` | `str` | Text sent to the user (may be a provocation or error phrase) |
+- `AGENT_MAX_STEPS`
+- `AGENT_TOOL_TIMEOUT`
+- `AGENT_TOOL_USER_AGENT`
+- `AGENT_TOOL_FOLLOW_REDIRECTS`
+- `AGENT_TOOL_MAX_HTML_BYTES`
+- `AGENT_TOOL_MAX_RESOURCE_COUNT`
+- `AGENT_TOOL_MAX_RESOURCE_BYTES`
+- `AGENT_TOOL_MAX_TOTAL_RESOURCE_BYTES`
+- `AGENT_TOOL_MAX_MAIN_TEXT_CHARS`
+- `AGENT_TOOL_MAX_OBSERVATION_CHARS`

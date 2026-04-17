@@ -8,7 +8,7 @@ A Telegram chatbot that forwards user messages to a locally-running language mod
 
 ## Goal
 
-Demonstrate a minimal, stateless Telegram ↔ LLM integration in Python with a layer of post-processing that shapes the bot's personality at the application level, independent of the model's own behaviour.
+Demonstrate a production-lean Telegram ↔ local-LLM integration with explicit runtime wiring, typed settings, and a shared Ollama gateway.
 
 ---
 
@@ -27,9 +27,9 @@ Demonstrate a minimal, stateless Telegram ↔ LLM integration in Python with a l
 
 ## Key design decisions
 
-**Stateless processing.** No database, no session store. Every message is a self-contained request to the LLM. This keeps the bot simple and horizontally scalable at the cost of no conversational memory.
+**In-memory conversation state.** Per-user history is kept in memory with deterministic trimming and optional summarization of older turns.
 
-**Runtime model switching.** On startup the bot queries Ollama for available models and lets the operator pick one interactively. The selected model name is stored in `config.OLLAMA_MODEL` and read by `llm.py` on every request, so no restart is needed after selection.
+**Explicit startup bootstrap.** Startup runs in a synchronous bootstrap stage that validates settings, discovers models, selects an active runtime model, and then starts async polling.
 
 **Polling, not webhooks.** Simplifies deployment — no public HTTPS endpoint required.
 
@@ -37,7 +37,7 @@ Demonstrate a minimal, stateless Telegram ↔ LLM integration in Python with a l
 
 ## Boundaries / non-features
 
-- No chat history or multi-turn context
+- No persistent storage (history is in-memory only)
 - Text messages only (media, voice, files are silently ignored)
 - Single Ollama instance, no load balancing
 - No user authentication or per-user rate limiting

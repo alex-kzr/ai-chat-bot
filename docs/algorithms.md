@@ -1,73 +1,102 @@
 # Algorithms
 
-## 1. Model Selection (`select_model`)
+## 1. Agent Loop (`run_agent`)
 
-**Location:** `bot.py:11-35`
+**Location:** `src/agent/core.py`
 
-**Purpose:** Let the operator choose which Ollama model to use before the bot starts.
+Flow:
 
-**Algorithm:**
+1. Build system prompt with available tools.
+2. Send task to LLM.
+3. Parse response:
+   - `{"tool":"...","args":{...}}` -> execute tool
+   - `{"final_answer":"..."}` -> stop with final answer
+   - invalid output -> one retry, then terminal error
+4. Append tool `observation` into the next turn context.
+5. Repeat until `final_answer`, `max_steps`, or controlled terminal error.
 
-```
-select_model() → None  (mutates config.OLLAMA_MODEL as side effect)
-
-1. GET {OLLAMA_URL}/api/tags  (timeout 5 s)
-   On exception → print warning, return (keep default)
-
-2. Extract list of model names from response JSON
-
-3. Print numbered list; mark the current default with "(default)"
-
-4. Print prompt, read line from stdin
-   - Empty string → return (keep default)
-   - Digit d where 1 ≤ d ≤ len(models) → config.OLLAMA_MODEL = models[d-1]
-   - Anything else → print warning, return (keep default)
-```
+Stop reasons:
+- `final`
+- `max_steps`
+- `error`
 
 ---
 
-## 2. Typing Indicator Loop (`_keep_typing`)
+## 2. Parser Contract (`parse_agent_output`)
 
-**Location:** `handlers.py:20-22`
+**Location:** `src/agent/parser.py`
 
-**Purpose:** Show "bot is typing…" animation in Telegram while waiting for LLM.
+Extraction order:
+1. Fenced JSON block (```json ... ```)
+2. First balanced JSON object in text
+3. Parse error if nothing valid extracted
 
-**Algorithm:**
-
-```
-_keep_typing(message, stop_event) → None  (runs as background Task)
-
-Loop until stop_event is set:
-  send_chat_action(chat_id, TYPING)
-  sleep 4 s
-
-(Telegram typing indicator expires after ~5 s, so 4 s keeps it alive)
-```
-
-The task is created with `asyncio.create_task` before calling `ask_llm` and cancelled in the `finally` block so it stops even if `ask_llm` raises.
+Validation:
+- top-level JSON must be an object
+- allowed terminal keys are `final_answer` or `tool`
+- `final_answer` must be `str`
+- `tool` must be non-empty `str`
+- `args` must be an object when `tool` is present
 
 ---
 
-## 3. LLM Request / Response (`ask_llm`)
+## 3. Deterministic HTTP Tool (`http_request`)
 
-**Location:** `llm.py:9-31`
+**Location:** `src/agent/tools.py`
 
-**Algorithm:**
+Pipeline:
 
-```
-ask_llm(user_text) → (llm_raw, bot_reply)
+1. Normalize and validate URL (`http`/`https` only).
+2. Perform deterministic HTML fetch (fixed timeout, redirects, headers, byte limit).
+3. Parse HTML and extract:
+   - `title`
+   - visible `main_text` (scripts/styles excluded)
+   - linked resources (`script`, `link`, `img`)
+4. Load linked resources under policy:
+   - same-origin only
+   - max resource count
+   - per-resource byte limit
+   - total-resource byte limit
+5. Build bounded structured observation JSON.
+6. Return `[tool_error] ...` on controlled failures.
 
-1. Build payload:
-   {model, messages: [system_prompt, user_text], stream: false}
+---
 
-2. POST {OLLAMA_URL}/api/chat  (timeout = config.OLLAMA_TIMEOUT)
-   On any exception:
-     log error
-     return ("[error]", random(ERROR_PHRASES))
+## 4. Structured Logging
 
-3. llm_raw = response.json()["message"]["content"].strip()
+**Locations:** `src/agent/core.py`, `src/context_logging.py`
 
-4. return (llm_raw, llm_raw)
-```
+Each agent run gets a `run_id`.  
+Structured events include:
+- `run_started`
+- `loop_step_started`
+- `tool_call_started`
+- `tool_call_finished` (status + duration)
+- `run_completed`
+- parse/LLM failure events
 
-`random.choice` is Python's built-in uniform random selection from a list — no weights, no seeds.
+All events are emitted as deterministic JSON lines.
+
+---
+
+## 5. Validation Scenarios
+
+### Malformed JSON
+- Force model output like `{not-json`
+- Expect parser `ParseError`
+- Expect one retry then controlled stop on repeated failure
+
+### Unknown tool
+- Output `{"tool":"unknown_tool","args":{}}`
+- Expect deterministic `[tool_error] unknown tool: ...`
+- Expect observation fed back to next turn
+
+### Max steps
+- Force tool-only outputs with no `final_answer`
+- Expect loop stop with `stopped_reason = "max_steps"`
+
+### Multi-step HTTP flow
+- Use URL task requiring web retrieval
+- Expect at least one `http_request` step
+- Expect final answer only in user-visible Telegram reply
+- Expect resource summary in `http_request` observation

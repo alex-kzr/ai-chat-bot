@@ -29,6 +29,8 @@ Demonstrate a production-lean Telegram ↔ local-LLM integration with explicit r
 
 **In-memory conversation state.** Per-user history is kept in memory with deterministic trimming and optional summarization of older turns.
 
+**Modular monolith + in-process events.** Feature modules (Users, Chat/AI, History) communicate via an in-memory `EventBus` with typed contracts (`UserCreated`, `MessageReceived`, `ResponseGenerated`) instead of direct cross-module calls.
+
 **Explicit startup bootstrap.** Startup runs in a synchronous bootstrap stage that validates settings, discovers models, selects an active runtime model, and then starts async polling.
 
 **Polling, not webhooks.** Simplifies deployment — no public HTTPS endpoint required.

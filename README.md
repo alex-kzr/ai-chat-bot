@@ -20,7 +20,7 @@ Full setup and troubleshooting: [docs/usage-guide.md](docs/usage-guide.md)
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+python -m pytest
 ruff check src tests
 mypy src
 ```
@@ -46,9 +46,11 @@ mypy src
 ## How it works
 
 ```
-User message → Ollama LLM → reply
-                     │
-               error? → error phrase
+User message
+  → Users module (identify; publishes UserCreated on first seen)
+  → ChatOrchestrator (publishes MessageReceived / ResponseGenerated)
+  → ChatService → OllamaGateway
+  → History updates via EventBus subscriptions
 ```
 
 Chat history is stored **in memory per user** with deterministic trimming and summarization.

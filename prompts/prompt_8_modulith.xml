@@ -1,0 +1,144 @@
+<role>
+    Senior Python Software Architect with expertise in modular monoliths and event-driven architecture
+</role>
+<task>
+# 🧠 Assignment: Application Architecture Evolution
+
+## 📌 Context
+
+You have a simple Telegram bot (or HTTP API) that already can:
+
+* Receive user requests
+* Generate responses using AI
+
+However, the current state of the application has several issues:
+
+* No clear structure
+* No modularization
+* Everything is implemented in a single file or layer
+* Difficult to scale, maintain, or extend
+
+---
+
+## 🎯 Goal
+
+You need to **rethink the architecture of this application** and complete it in two stages:
+
+---
+
+## 🧩 Part 1 — From Chaos to a Modular Monolith
+
+### Requirements
+
+Split the application into **at least 3 modules**:
+
+### 1. Users Module
+
+* Store user data
+* Handle identification (Telegram ID / Session ID)
+
+### 2. Chat / AI Module
+
+* Work with LLM (AI model)
+* Generate responses
+
+### 3. History Module
+
+* Store message history
+* Retrieve the last N messages
+
+---
+
+### ❗ Important Constraints
+
+* Modules **must NOT directly access each other's internal code**
+
+* Communication must happen only through:
+
+* Public interface functions
+* Or a service layer
+
+* Each module must:
+
+* Have its own folder
+* Have a clear responsibility boundary
+
+---
+
+## 🔌 Part 2 — Introduce Event-Driven Architecture
+
+Now you need to **eliminate direct calls between modules wherever possible**.
+
+### Requirements
+
+Implement a **simple in-memory event system**
+
+Examples of events:
+
+* `UserCreated`
+* `MessageReceived`
+* `ResponseGenerated`
+
+---
+
+### Behavior
+
+* The Chat module **must NOT call the History module directly**
+
+Instead:
+
+* Chat module **publishes an event** `MessageReceived`
+
+* History module:
+
+* Subscribes to the event
+* Saves the message
+
+---
+
+### Constraints
+
+* Do NOT use external systems like Kafka or RabbitMQ
+
+* Use either:
+
+* A simple EventEmitter (if using Node.js)
+* Or implement your own lightweight in-memory event bus
+
+---
+
+## ✅ Expected Outcome
+
+* A modular monolith with clear boundaries
+* Loose coupling between modules
+* Event-driven communication between components
+* Clean, extensible architecture ready for future scaling
+
+---
+
+## 💡 Optional Enhancements (Bonus)
+
+* Add logging for events
+* Add retry logic for event handlers
+* Add basic unit tests for modules
+* Introduce dependency injection
+
+---
+
+## 📦 Deliverables
+
+* Source code with modular structure
+* README explaining architecture decisions
+* Example flow:
+
+* User sends message
+* Event is triggered
+* Response is generated
+* History is updated via event
+
+---
+
+</task>
+<output>
+    Create plan and tasks
+</output>

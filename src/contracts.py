@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, Literal, NewType, TypedDict
+
+UserId = NewType("UserId", int)
+ChatRole = Literal["system", "user", "assistant"]
 
 
 class ChatMessage(TypedDict):
-    role: str
+    role: ChatRole
     content: str
 
 

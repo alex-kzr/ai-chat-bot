@@ -7,6 +7,15 @@
 - (empty)
 
 ## Done
+- VD-02: Document architecture decisions
+- VD-01: Add modular event-flow tests
+- EB-03: Publish chat flow events
+- EB-02: Wire module subscriptions
+- EB-01: Implement in-memory event bus
+- MM-04: Isolate History module
+- MM-03: Isolate Chat/AI module
+- MM-02: Introduce Users module
+- MM-01: Define module boundaries and shared contracts
 - QG-03: Add static quality tooling and documentation sync
 - QG-02: Expand automated test coverage for critical flows
 - QG-01: Add explicit contracts and domain exceptions

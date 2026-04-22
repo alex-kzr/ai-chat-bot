@@ -37,6 +37,18 @@ def test_trim_history_on_append() -> None:
     assert [m["content"] for m in history] == ["2", "3", "4"]
 
 
+def test_get_history_returns_copy_of_list() -> None:
+    svc = ConversationService(settings=_settings(), ollama=_GatewayStub())  # type: ignore[arg-type]
+    user_id = 101
+    svc.append_message(user_id, "user", "hello")
+
+    snapshot = svc.get_history(user_id)
+    snapshot.append({"role": "user", "content": "mutated"})
+
+    history = svc.get_history(user_id)
+    assert [m["content"] for m in history] == ["hello"]
+
+
 @pytest.mark.asyncio
 async def test_summarization_replaces_old_messages() -> None:
     svc = ConversationService(settings=_settings(), ollama=_GatewayStub())  # type: ignore[arg-type]

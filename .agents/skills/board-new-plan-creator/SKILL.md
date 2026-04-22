@@ -192,6 +192,11 @@ Background, links to related files, modules, or docs.
 - Constraints
 - Important details
 
+## Testing
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Manual testing
+
 ## Definition of Done
 - [ ] Feature implemented
 - [ ] Works as expected

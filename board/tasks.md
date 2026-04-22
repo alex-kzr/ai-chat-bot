@@ -1,46 +1,46 @@
-# 📋 Tasks — Project-Wide Python Refactoring
+# 📋 Tasks — Modular Monolith and Event-Driven Chat Flow
 ---
 
-## Phase 1 — Configuration & Bootstrap
+## Phase 1 — Modular Monolith Foundation
 
-### CB-01 Introduce typed settings object
-Replace module-level environment reads in `src/config.py` with an explicit typed settings object that validates inputs, owns defaults, and removes fragile `from src.config import ...` coupling.
-→ [CB-01_typed-settings.md](./tasks/CB-01_typed-settings.md)
+### MM-01 Define module boundaries and shared contracts
+Create the target module layout and shared public contracts for users, chat/AI, history, and events so implementation tasks have stable interfaces to follow.
+→ [MM-01_define-module-boundaries.md](./tasks/MM-01_define-module-boundaries.md)
 
-### CB-02 Refactor startup and model selection flow
-Move startup orchestration into a clear bootstrap path that performs environment loading, model discovery, and runtime model selection without blocking inside async handlers or mutating hidden globals.
-→ [CB-02_startup-bootstrap.md](./tasks/CB-02_startup-bootstrap.md)
+### MM-02 Introduce Users module
+Add a Users module responsible for identifying Telegram users and storing in-memory user records behind a public service interface.
+→ [MM-02_introduce-users-module.md](./tasks/MM-02_introduce-users-module.md)
 
-### CB-03 Centralize logging and runtime wiring
-Unify application logging setup, context logger configuration, and runtime dependency wiring so console/file logging, bot startup logs, and debug output are configured from one place.
-→ [CB-03_logging-runtime-wiring.md](./tasks/CB-03_logging-runtime-wiring.md)
+### MM-03 Isolate Chat/AI module
+Move chat response generation behind a Chat/AI module interface that owns LLM interaction and keeps Telegram handlers independent from AI internals.
+→ [MM-03_isolate-chat-ai-module.md](./tasks/MM-03_isolate-chat-ai-module.md)
 
-## Phase 2 — Runtime Services & State
+### MM-04 Isolate History module
+Move message history operations behind a History module interface that owns append, retrieval, trimming, and summarization boundaries.
+→ [MM-04_isolate-history-module.md](./tasks/MM-04_isolate-history-module.md)
 
-### RS-01 Extract Ollama gateway and request models
-Create a dedicated Ollama client layer shared by chat, summarization, agent, and model-discovery flows so HTTP settings, retries, payload construction, and error mapping are centralized.
-→ [RS-01_ollama-gateway.md](./tasks/RS-01_ollama-gateway.md)
+## Phase 2 — Event Bus and Integration
 
-### RS-02 Encapsulate conversation state and summarization
-Refactor in-memory history and summarization into an explicit conversation-state service with clear APIs for read, append, trim, summarize, and replace operations.
-→ [RS-02_conversation-state.md](./tasks/RS-02_conversation-state.md)
+### EB-01 Implement in-memory event bus
+Create a lightweight typed event bus with publish/subscribe support, structured logging, and safe handler execution.
+→ [EB-01_implement-in-memory-event-bus.md](./tasks/EB-01_implement-in-memory-event-bus.md)
 
-### RS-03 Slim Telegram handlers and agent orchestration
-Reduce `handlers.py` and agent runtime modules to orchestration-only code by moving business rules, formatting, and fallback decisions into dedicated services or helper modules.
-→ [RS-03_orchestration-boundaries.md](./tasks/RS-03_orchestration-boundaries.md)
+### EB-02 Wire module subscriptions
+Register History module subscribers for chat events and wire event bus dependencies through runtime/bootstrap without hidden globals.
+→ [EB-02_wire-module-subscriptions.md](./tasks/EB-02_wire-module-subscriptions.md)
 
-## Phase 3 — Quality Gates & Safety
+### EB-03 Publish chat flow events
+Update the user message flow to publish `UserCreated`, `MessageReceived`, and `ResponseGenerated` events while preserving current Telegram behavior.
+→ [EB-03_publish-chat-flow-events.md](./tasks/EB-03_publish-chat-flow-events.md)
 
-### QG-01 Add explicit contracts and domain exceptions
-Introduce typed request/response models plus custom exception classes for configuration, Ollama transport, agent parsing, and tool failures so broad `except Exception` blocks can be narrowed.
-→ [QG-01_contracts-and-errors.md](./tasks/QG-01_contracts-and-errors.md)
+## Phase 3 — Validation and Documentation
 
-### QG-02 Expand automated test coverage for critical flows
-Build focused unit and integration-style tests for config parsing, conversation state, Ollama client behavior, parser/tool execution, and Telegram-facing orchestration paths.
-→ [QG-02_test-coverage.md](./tasks/QG-02_test-coverage.md)
+### VD-01 Add modular event-flow tests
+Add focused tests for module boundaries, event bus behavior, event subscriptions, and the user-message-to-history flow.
+→ [VD-01_add-modular-event-flow-tests.md](./tasks/VD-01_add-modular-event-flow-tests.md)
 
-### QG-03 Add static quality tooling and documentation sync
-Add project-level developer tooling for pytest, linting, and type checking, then update docs so architecture and runbooks describe the refactored structure rather than the legacy layout.
-→ [QG-03_quality-tooling-docs.md](./tasks/QG-03_quality-tooling-docs.md)
+### VD-02 Document architecture decisions
+Update README and docs with the modular monolith layout, event flow, public interfaces, and an example request lifecycle.
+→ [VD-02_document-architecture-decisions.md](./tasks/VD-02_document-architecture-decisions.md)
 
 ---

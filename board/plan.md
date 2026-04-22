@@ -1,15 +1,17 @@
-# Feature: Project-Wide Python Refactoring
+# Feature: Modular Monolith and Event-Driven Chat Flow
 
-This plan describes a targeted refactoring of the Python codebase to reduce import-time side effects, separate infrastructure from orchestration, make runtime state explicit, and add quality gates around typing and tests. The plan is based on the current project structure, the existing documentation, and the `python*` skills focused on configuration, design patterns, error handling, observability, testing, and type safety.
+This plan evolves the Telegram AI chatbot into a modular monolith with clear users, chat/AI, and history boundaries, then introduces an in-memory event bus so modules communicate through public contracts instead of reaching into each other's internals.
 
-## Phase 1: Configuration & Bootstrap (CB-01 to CB-03)
+The design follows the current Python service-oriented structure in `src/`, keeps dependencies explicit through runtime wiring, and avoids external infrastructure such as Kafka or RabbitMQ.
 
-Stabilize application startup by replacing mutable module globals with explicit settings and bootstrap flow. This phase addresses the most fragile parts of the current code: `config.py` import-time validation and mutation, blocking model selection inside async code, and scattered logging setup.
+## Phase 1: Modular Monolith Foundation (MM-01 to MM-04)
 
-## Phase 2: Runtime Services & State (RS-01 to RS-03)
+Split the current chat flow into focused feature modules with explicit public interfaces. This phase introduces user identification, chat/AI response generation, and history management as separate package boundaries while keeping behavior compatible with the existing Telegram bot.
 
-Extract runtime responsibilities into focused services so Telegram handlers, Ollama access, agent orchestration, and conversation state are no longer tightly coupled. The goal is to make request flow easier to test, easier to evolve, and less dependent on hidden global state.
+## Phase 2: Event Bus and Integration (EB-01 to EB-03)
 
-## Phase 3: Quality Gates & Safety (QG-01 to QG-03)
+Add a lightweight in-memory event system and wire module interactions through events where direct cross-module calls are not required. This phase establishes event contracts for `UserCreated`, `MessageReceived`, and `ResponseGenerated`.
 
-Add explicit contracts, better error boundaries, and automated checks around the refactored architecture. This phase closes the loop by making critical paths testable and by adding static and runtime validation that keeps the codebase consistent after the refactoring lands.
+## Phase 3: Validation and Documentation (VD-01 to VD-02)
+
+Prove the architecture with focused tests and update documentation so the event-driven modular monolith is understandable, runnable, and ready for future persistence or external messaging.

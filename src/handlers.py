@@ -7,6 +7,7 @@ from aiogram.enums import ChatAction
 from aiogram.filters import Command
 from aiogram.types import Message
 
+from .events import UserCreated
 from .runtime import get_runtime
 from .prompts import ERROR_PHRASES
 
@@ -31,8 +32,15 @@ async def handle_start(message: Message) -> None:
 
 @router.message(Command("agent"))
 async def handle_agent(message: Message) -> None:
-    user_id = message.from_user.id
-    user_display = message.from_user.username or user_id
+    runtime = get_runtime()
+    user, created = runtime.users.get_or_create(
+        telegram_user_id=message.from_user.id,
+        username=message.from_user.username,
+    )
+    user_id = int(user.user_id)
+    user_display = user.username or user_id
+    if created:
+        await runtime.event_bus.publish(UserCreated(user_id=user_id, username=user.username))
 
     task = message.text.replace("/agent", "", 1).strip()
     if not task:
@@ -44,7 +52,6 @@ async def handle_agent(message: Message) -> None:
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
-        runtime = get_runtime()
         answer = (await runtime.agent_orchestrator.run_task(task)).strip() or random.choice(ERROR_PHRASES)
         for chunk in _split_message(answer):
             await message.answer(chunk)
@@ -55,14 +62,20 @@ async def handle_agent(message: Message) -> None:
 
 @router.message(F.text)
 async def handle_text(message: Message) -> None:
-    user_id = message.from_user.id
-    user_display = message.from_user.username or user_id
+    runtime = get_runtime()
+    user, created = runtime.users.get_or_create(
+        telegram_user_id=message.from_user.id,
+        username=message.from_user.username,
+    )
+    user_id = int(user.user_id)
+    user_display = user.username or user_id
+    if created:
+        await runtime.event_bus.publish(UserCreated(user_id=user_id, username=user.username))
     logging.info(">>> %s: %s", user_display, message.text)
 
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
-        runtime = get_runtime()
         outcome = await runtime.chat_orchestrator.process_text(user_id, message.text)
     finally:
         stop.set()

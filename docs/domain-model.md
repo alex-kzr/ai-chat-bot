@@ -6,6 +6,15 @@ The project is small and has no persistent entities or database. The domain is d
 
 ## Concepts
 
+### UserIdentity
+
+An in-memory user record created on first interaction.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `int` | Telegram numeric user ID |
+| `username` | `str \| None` | Telegram username (when available) |
+
 ### UserMessage
 
 A text string sent by a Telegram user.
@@ -17,6 +26,40 @@ A text string sent by a Telegram user.
 | `chat_id` | `int` | Telegram chat ID (used to send reply) |
 
 UserMessage is not stored. It is consumed once and discarded.
+
+---
+
+## Events
+
+Events are in-process messages published on an in-memory `EventBus` during the normal chat flow.
+
+### UserCreated
+
+Published when a Telegram user is first seen.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `int` | Telegram numeric user ID |
+| `username` | `str \| None` | Telegram username (when available) |
+
+### MessageReceived
+
+Published when a user text enters the standard chat path.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `int` | Telegram numeric user ID |
+| `text` | `str` | Raw user message text |
+
+### ResponseGenerated
+
+Published after a successful AI response is produced.
+
+| Field | Type | Description |
+|---|---|---|
+| `user_id` | `int` | Telegram numeric user ID |
+| `reply` | `str` | User-visible assistant reply (may include thinking block when enabled) |
+| `used_agent` | `bool` | Whether agent routing was used (false on standard chat path) |
 
 ---
 

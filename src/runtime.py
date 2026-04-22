@@ -4,7 +4,11 @@ import logging
 from dataclasses import dataclass
 
 from .config import Settings
-from .conversation import ConversationService
+from .modules.history import ConversationService
+from .modules.users import UserService
+from .modules.chat import ChatService
+from .events.bus import EventBus
+from .events import MessageReceived, ResponseGenerated
 from .ollama_gateway import OllamaGateway
 from .services.chat_orchestrator import ChatOrchestrator
 from .agent.service import AgentOrchestrator
@@ -16,8 +20,11 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class AppRuntime:
     settings: Settings
+    users: UserService
+    event_bus: EventBus
     ollama: OllamaGateway
     conversation: ConversationService
+    chat_service: ChatService
     agent_orchestrator: AgentOrchestrator
     chat_orchestrator: ChatOrchestrator
 
@@ -27,21 +34,35 @@ _runtime: AppRuntime | None = None
 
 def create_runtime(settings: Settings) -> AppRuntime:
     configure_context_logging(settings)
+    users = UserService()
+    event_bus = EventBus()
     ollama = OllamaGateway(settings)
     conversation = ConversationService(settings=settings, ollama=ollama)
+    _register_event_handlers(event_bus, conversation)
+    chat_service = ChatService(settings=settings, ollama=ollama)
     agent_orchestrator = AgentOrchestrator()
     chat_orchestrator = ChatOrchestrator(
         conversation=conversation,
         agent=agent_orchestrator,
+        chat=chat_service,
+        event_bus=event_bus,
         show_thinking=settings.logging.show_thinking,
     )
     return AppRuntime(
         settings=settings,
+        users=users,
+        event_bus=event_bus,
         ollama=ollama,
         conversation=conversation,
+        chat_service=chat_service,
         agent_orchestrator=agent_orchestrator,
         chat_orchestrator=chat_orchestrator,
     )
+
+
+def _register_event_handlers(event_bus: EventBus, conversation: ConversationService) -> None:
+    event_bus.subscribe(MessageReceived, conversation.on_message_received)
+    event_bus.subscribe(ResponseGenerated, conversation.on_response_generated)
 
 
 def set_runtime(runtime: AppRuntime) -> None:

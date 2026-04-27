@@ -47,6 +47,11 @@ async def handle_agent(message: Message) -> None:
         await message.answer("Usage: `/agent <task>`\n\nExample: `/agent What is 12*15?`", parse_mode="Markdown")
         return
 
+    max_chars = runtime.settings.security.max_user_input_chars
+    if len(task) > max_chars:
+        await message.answer(f"Task is too long (max {max_chars} characters).")
+        return
+
     logging.info(">>> %s (agent): %s", user_display, task)
 
     stop = asyncio.Event()
@@ -71,12 +76,19 @@ async def handle_text(message: Message) -> None:
     user_display = user.username or user_id
     if created:
         await runtime.event_bus.publish(UserCreated(user_id=user_id, username=user.username))
-    logging.info(">>> %s: %s", user_display, message.text)
+
+    max_chars = runtime.settings.security.max_user_input_chars
+    text = message.text.strip()
+    if len(text) > max_chars:
+        await message.answer(f"Message is too long (max {max_chars} characters).")
+        return
+
+    logging.info(">>> %s: %s", user_display, text)
 
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
-        outcome = await runtime.chat_orchestrator.process_text(user_id, message.text)
+        outcome = await runtime.chat_orchestrator.process_text(user_id, text)
     finally:
         stop.set()
         typing_task.cancel()

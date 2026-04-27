@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Cap user-supplied text at a known size before it reaches the LLM, the agent, or history storage. Without a cap, an attacker can submit megabytes of text per message and force the bot to spend tokens, time, and memory — a cheap denial-of-service.
@@ -25,15 +25,15 @@ Cap user-supplied text at a known size before it reaches the LLM, the agent, or 
 - Log a structured warning so operators can tune the limit.
 
 ## Testing
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Manual testing
+- [x] Unit tests
+- [x] Integration tests
+- [x] Manual testing
 
 ## Definition of Done
-- [ ] `MAX_USER_INPUT_CHARS` setting added, validated, and documented in `.env.example`.
-- [ ] `handle_text` and `handle_agent` reject oversized input with a polite reply.
-- [ ] Rejected messages are not added to conversation history.
-- [ ] Tests cover at-limit (accepted) and over-limit (rejected) cases.
+- [x] `MAX_USER_INPUT_CHARS` setting added, validated, and documented in `.env.example`.
+- [x] `handle_text` and `handle_agent` reject oversized input with a polite reply.
+- [x] Rejected messages are not added to conversation history.
+- [x] Tests cover at-limit (accepted) and over-limit (rejected) cases.
 
 ## Affected Files / Components
 - `src/config.py`

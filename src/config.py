@@ -77,6 +77,11 @@ class RuntimeSettings:
 
 
 @dataclass(slots=True)
+class SecuritySettings:
+    max_user_input_chars: int
+
+
+@dataclass(slots=True)
 class Settings:
     bot_token: str
     ollama: OllamaSettings
@@ -86,6 +91,7 @@ class Settings:
     logging: LoggingSettings
     agent: AgentSettings
     runtime: RuntimeSettings
+    security: SecuritySettings
 
     @property
     def chat_model(self) -> str:
@@ -246,6 +252,10 @@ def load_settings(*, env: Mapping[str, str] | None = None, load_dotenv_file: boo
         tools=agent_tools,
     )
 
+    security = SecuritySettings(
+        max_user_input_chars=_parse_int(source, "MAX_USER_INPUT_CHARS", 4000, min_value=100),
+    )
+
     return Settings(
         bot_token=bot_token,
         ollama=ollama,
@@ -255,6 +265,7 @@ def load_settings(*, env: Mapping[str, str] | None = None, load_dotenv_file: boo
         logging=logging_cfg,
         agent=agent,
         runtime=RuntimeSettings(),
+        security=security,
     )
 
 

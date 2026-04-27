@@ -8,7 +8,7 @@ from typing import Literal
 from src.context_logging import log_agent_event
 from src.errors import OllamaProtocolError, OllamaTransportError
 from src.agent.parser import ActionStep, FinalStep, ParseError, parse_agent_output
-from src.agent.tools import TOOLS
+from src.agent.tools import TOOLS, validate_tool_args
 from src.prompts import build_agent_prompt
 
 logger = logging.getLogger(__name__)
@@ -225,20 +225,38 @@ async def run_agent(task: str) -> AgentResult:
 
             # Execute tool
             if normalized_action in TOOLS:
-                observation = await TOOLS[normalized_action].run(parsed.args)
-                step.observation = observation
-                logger.info(f"Observation: {observation[:200]}")
-                duration_ms = int((time.perf_counter() - started_at) * 1000)
-                status = "error" if observation.startswith("[tool_error]") else "ok"
-                log_agent_event(
-                    run_id,
-                    "tool_call_finished",
-                    step_index=step_index,
-                    tool=normalized_action,
-                    status=status,
-                    duration_ms=duration_ms,
-                    observation_preview=observation[:300],
-                )
+                tool_spec = TOOLS[normalized_action]
+                is_valid, validation_error = validate_tool_args(tool_spec, parsed.args or {})
+
+                if not is_valid:
+                    observation = f"[tool_error] {validation_error}"
+                    step.observation = observation
+                    logger.warning(f"Validation error for {normalized_action}: {validation_error}")
+                    duration_ms = int((time.perf_counter() - started_at) * 1000)
+                    log_agent_event(
+                        run_id,
+                        "tool_call_finished",
+                        step_index=step_index,
+                        tool=normalized_action,
+                        status="validation_error",
+                        duration_ms=duration_ms,
+                        observation_preview=observation[:300],
+                    )
+                else:
+                    observation = await tool_spec.run(parsed.args or {})
+                    step.observation = observation
+                    logger.info(f"Observation: {observation[:200]}")
+                    duration_ms = int((time.perf_counter() - started_at) * 1000)
+                    status = "error" if observation.startswith("[tool_error]") else "ok"
+                    log_agent_event(
+                        run_id,
+                        "tool_call_finished",
+                        step_index=step_index,
+                        tool=normalized_action,
+                        status=status,
+                        duration_ms=duration_ms,
+                        observation_preview=observation[:300],
+                    )
             else:
                 known_tools = ", ".join(TOOLS.keys())
                 observation = (

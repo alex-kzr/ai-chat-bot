@@ -1,7 +1,6 @@
 # Kanban Board
 
 ## To Do
-- TSH-02: Validate tool-call arguments with explicit schemas
 - TSH-03: Optional outbound domain allowlist for http_request
 - IDP-01: Enforce maximum user input length
 - IDP-02: Per-user rate limiting
@@ -16,6 +15,7 @@
 - (empty)
 
 ## Done
+- TSH-02: Validate tool-call arguments with explicit schemas
 - TSH-01: Block private and metadata targets in http_request
 - VD-02: Document architecture decisions
 - VD-01: Add modular event-flow tests

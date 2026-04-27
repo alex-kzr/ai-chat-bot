@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Stop arbitrary or malformed JSON from reaching tool implementations. Today the agent loop passes `parsed.args` (any dict shape the LLM produced) directly to `TOOLS[name].run(args)`, relying on each tool to defend itself. A consistent, centralized validation layer reduces tool-side error-handling complexity and prevents type-confusion bugs (e.g. a list passed where a string is expected).
@@ -27,16 +27,16 @@ Stop arbitrary or malformed JSON from reaching tool implementations. Today the a
 - Run validation in `core.py` immediately before `await TOOLS[normalized_action].run(parsed.args)`.
 
 ## Testing
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Manual testing
+- [x] Unit tests
+- [x] Integration tests
+- [x] Manual testing
 
 ## Definition of Done
-- [ ] All tool calls go through the centralized validator before `run()`.
-- [ ] Invalid `args` produce a `[tool_error] invalid_args:` observation.
-- [ ] Unknown keys are rejected.
-- [ ] Existing happy-path tool tests still pass.
-- [ ] New tests cover at least: missing required arg, wrong type, unknown key.
+- [x] All tool calls go through the centralized validator before `run()`.
+- [x] Invalid `args` produce a `[tool_error] invalid_args:` observation.
+- [x] Unknown keys are rejected.
+- [x] Existing happy-path tool tests still pass.
+- [x] New tests cover at least: missing required arg, wrong type, unknown key.
 
 ## Affected Files / Components
 - `src/agent/tools.py`

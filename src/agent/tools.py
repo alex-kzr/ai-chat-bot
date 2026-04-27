@@ -32,6 +32,49 @@ class ToolSpec:
     run: Callable
 
 
+def validate_tool_args(spec: ToolSpec, args: dict) -> tuple[bool, str | None]:
+    """Validate tool arguments against the tool spec's schema.
+
+    Returns:
+        (is_valid, error_message) — (True, None) if valid; (False, reason) if invalid.
+    """
+    if not isinstance(args, dict):
+        return False, f"invalid_args: arguments must be a dict, got {type(args).__name__}"
+
+    provided_keys = set(args.keys())
+    schema_keys = set(spec.args_schema.keys())
+
+    for key in provided_keys:
+        if key not in schema_keys:
+            return False, f"invalid_args: {key}: unknown key"
+
+    for key, field_spec in spec.args_schema.items():
+        is_required = field_spec.get("required", True)
+        field_type = field_spec.get("type", "string")
+
+        if key not in args:
+            if is_required:
+                return False, f"invalid_args: {key}: required argument missing"
+            continue
+
+        value = args[key]
+
+        if field_type == "string":
+            if not isinstance(value, str):
+                return False, f"invalid_args: {key}: expected string, got {type(value).__name__}"
+        elif field_type == "integer":
+            if not isinstance(value, int) or isinstance(value, bool):
+                return False, f"invalid_args: {key}: expected integer, got {type(value).__name__}"
+        elif field_type == "number":
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                return False, f"invalid_args: {key}: expected number, got {type(value).__name__}"
+        elif field_type == "boolean":
+            if not isinstance(value, bool):
+                return False, f"invalid_args: {key}: expected boolean, got {type(value).__name__}"
+
+    return True, None
+
+
 @dataclass
 class FetchPayload:
     """HTTP fetch payload with metadata and deterministic truncation info."""
@@ -697,6 +740,7 @@ TOOLS: dict[str, ToolSpec] = {
             "expression": {
                 "type": "string",
                 "description": "Arithmetic expression to evaluate (e.g., '2+2*3')",
+                "required": True,
             }
         },
         run=calculator,
@@ -711,10 +755,12 @@ TOOLS: dict[str, ToolSpec] = {
             "url": {
                 "type": "string",
                 "description": "HTTP/HTTPS URL to fetch",
+                "required": True,
             },
             "method": {
                 "type": "string",
                 "description": "HTTP method (default: GET, only GET supported)",
+                "required": False,
             },
         },
         run=http_request,

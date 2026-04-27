@@ -1,7 +1,6 @@
 # Kanban Board
 
 ## To Do
-- TSH-03: Optional outbound domain allowlist for http_request
 - IDP-01: Enforce maximum user input length
 - IDP-02: Per-user rate limiting
 - IDP-03: Sanitize secrets in logs
@@ -15,6 +14,7 @@
 - (empty)
 
 ## Done
+- TSH-03: Optional outbound domain allowlist for http_request
 - TSH-02: Validate tool-call arguments with explicit schemas
 - TSH-01: Block private and metadata targets in http_request
 - VD-02: Document architecture decisions

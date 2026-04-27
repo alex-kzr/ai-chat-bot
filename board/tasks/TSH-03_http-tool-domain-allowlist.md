@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Provide an opt-in deny-by-default control for environments that want to restrict the agent's outbound web access to a known set of domains. Useful in production deployments where the bot only needs to read a handful of internal documentation sites.
@@ -26,16 +26,16 @@ Provide an opt-in deny-by-default control for environments that want to restrict
 - Update the README/`.env.example` with the new variable and an example.
 
 ## Testing
-- [ ] Unit tests
-- [ ] Integration tests
-- [ ] Manual testing
+- [x] Unit tests
+- [x] Integration tests
+- [x] Manual testing
 
 ## Definition of Done
-- [ ] New setting validated and surfaced through `Settings`.
-- [ ] When unset, tool behavior is unchanged.
-- [ ] When set, requests to non-allowlisted hosts return a deterministic `[tool_error] blocked_target: not_in_allowlist`.
-- [ ] Suffix matching (`*.example.com`) works.
-- [ ] Tests cover allowlisted, non-allowlisted, suffix-match, and case-insensitive hostnames.
+- [x] New setting validated and surfaced through `Settings`.
+- [x] When unset, tool behavior is unchanged.
+- [x] When set, requests to non-allowlisted hosts return a deterministic `[tool_error] blocked_target: not_in_allowlist`.
+- [x] Suffix matching (`*.example.com`) works.
+- [x] Tests cover allowlisted, non-allowlisted, suffix-match, and case-insensitive hostnames.
 
 ## Affected Files / Components
 - `src/config.py`

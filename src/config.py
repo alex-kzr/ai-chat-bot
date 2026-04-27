@@ -60,6 +60,7 @@ class AgentToolSettings:
     max_total_resource_bytes: int
     max_main_text_chars: int
     max_observation_chars: int
+    http_domain_allowlist: list[str]
 
 
 @dataclass(slots=True)
@@ -166,6 +167,14 @@ def _parse_log_level(env: Mapping[str, str], name: str, default: str) -> str:
     return raw
 
 
+def _parse_domain_list(env: Mapping[str, str], name: str) -> list[str]:
+    """Parse comma-separated domain list, lowercased and trimmed."""
+    raw = _get_raw(env, name, "").strip()
+    if not raw:
+        return []
+    return [domain.strip().lower() for domain in raw.split(",") if domain.strip()]
+
+
 def load_settings(*, env: Mapping[str, str] | None = None, load_dotenv_file: bool = True) -> Settings:
     """Build validated settings from environment values."""
     if load_dotenv_file and env is None:
@@ -227,6 +236,7 @@ def load_settings(*, env: Mapping[str, str] | None = None, load_dotenv_file: boo
         max_total_resource_bytes=_parse_int(source, "AGENT_TOOL_MAX_TOTAL_RESOURCE_BYTES", 400000, min_value=4096),
         max_main_text_chars=_parse_int(source, "AGENT_TOOL_MAX_MAIN_TEXT_CHARS", 12000, min_value=500),
         max_observation_chars=_parse_int(source, "AGENT_TOOL_MAX_OBSERVATION_CHARS", 18000, min_value=1000),
+        http_domain_allowlist=_parse_domain_list(source, "AGENT_TOOL_HTTP_DOMAIN_ALLOWLIST"),
     )
 
     agent = AgentSettings(

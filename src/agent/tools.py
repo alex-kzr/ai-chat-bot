@@ -142,6 +142,9 @@ async def http_request(args: dict) -> str:
 
         settings = _settings()
 
+        if not _host_matches_allowlist(parsed_initial.netloc, settings.agent.tools.http_domain_allowlist):
+            return f"[tool_error] blocked_target: not_in_allowlist"
+
         headers = {
             "User-Agent": settings.agent.tools.user_agent,
             "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
@@ -313,6 +316,30 @@ def _is_private_ip(ip_obj: ipaddress.ip_address) -> bool:
     )
 
 
+def _host_matches_allowlist(host: str, allowlist: list[str]) -> bool:
+    """Check if a host matches any entry in the allowlist.
+
+    Supports exact match and *.suffix wildcard matching.
+    """
+    if not allowlist:
+        return True
+
+    host_lower = host.lower()
+
+    for entry in allowlist:
+        entry_lower = entry.lower()
+
+        if entry_lower == host_lower:
+            return True
+
+        if entry_lower.startswith("*."):
+            suffix = entry_lower[2:]
+            if host_lower.endswith("." + suffix) and host_lower != suffix:
+                return True
+
+    return False
+
+
 async def _check_host_security(hostname: str) -> tuple[bool, str | None]:
     """Verify hostname does not resolve to a private/loopback IP.
 
@@ -370,12 +397,16 @@ async def _fetch_text_with_redirects(
     Returns:
         FetchPayload on success, or a string error message on failure.
     """
+    settings = _settings()
     current_url = url
     for hop in range(max_redirects + 1):
         parsed = urlparse(current_url)
         is_safe, error_msg = await _check_host_security(parsed.netloc)
         if not is_safe:
             return f"[tool_error] {error_msg}"
+
+        if not _host_matches_allowlist(parsed.netloc, settings.agent.tools.http_domain_allowlist):
+            return f"[tool_error] blocked_target: not_in_allowlist"
 
         content = bytearray()
         truncated = False
@@ -549,6 +580,10 @@ async def _load_resources(
         is_safe, error_msg = await _check_host_security(parsed_resolved.netloc)
         if not is_safe:
             skipped.append({"type": kind, "url": resolved, "reason": "blocked_by_ssrf_guard"})
+            continue
+
+        if not _host_matches_allowlist(parsed_resolved.netloc, settings.agent.tools.http_domain_allowlist):
+            skipped.append({"type": kind, "url": resolved, "reason": "blocked_by_allowlist"})
             continue
 
         if len(loaded) >= max_count:

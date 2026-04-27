@@ -1,0 +1,148 @@
+<role>
+    Security researcher and
+    Senior Application Security Engineer and
+    Python Backend Developer
+</role>
+<task>
+
+The project is a Python AI bot using LLMs, system prompts, chat history, external tools, APIs, files, HTTP requests, and possibly RAG. The bot must be resilient to prompt injection, data exfiltration, unsafe tool usage, DoS, and input handling flaws.
+
+Goal:
+Research,try to break, identify and fix vulnerabilities while preserving core functionality.
+
+Constraints:
+1. Do not remove business logic unless necessary.
+2. Avoid breaking public APIs and bot commands.
+3. Do not introduce heavy dependencies without justification.
+4. Do not store secrets in code, prompts, logs, or tests.
+5. Do not log tokens, keys, cookies, or sensitive user data.
+6. Keep changes minimal, clear, and testable.
+7. If a risk cannot be safely fixed automatically, add a TODO and document it.
+
+Checks:
+
+1. Prompt Injection & Jailbreak
+- Ensure strict separation of:
+- system instructions
+- tool instructions
+- user input
+- retrieved documents
+- chat history
+- Treat retrieved content as data, not instructions.
+- Prevent disclosure of system prompt, hidden context, and secrets.
+
+2. Tool Security
+- Validate all tool calls before execution.
+- Implement allowlist of tools.
+- Validate arguments via schema (Pydantic/dataclass).
+- Block unsafe subprocess/exec/eval usage.
+- For HTTP tools:
+- block localhost, private IPs, metadata endpoints;
+- restrict schemes (no file://, ftp://);
+- add timeouts and optional domain allowlist.
+- For file access:
+- restrict base directory;
+- block path traversal;
+- block access to .env and sensitive files.
+
+3. Secrets Management
+- Remove hardcoded secrets.
+- Use environment variables or secure storage.
+- Mask secrets in logs.
+- Add .env.example and ensure .env is gitignored.
+
+4. Logging
+- Remove sensitive data from logs.
+- Add sanitize_log_data().
+- Log tool calls and errors safely.
+
+5. DoS Protection
+- Add limits:
+- max input length
+- max history size
+- max context size
+- max agent steps
+- timeouts
+- optional rate limiting
+- Prevent infinite loops.
+
+6. Input Validation
+- Sanitize user input.
+- Handle parsing errors safely.
+
+7. RAG Safety
+- Mark retrieved data as untrusted.
+- Prevent it from overriding instructions.
+- Limit context size.
+- Detect suspicious phrases (ignore instructions, reveal prompt, etc.).
+
+8. Dependencies
+- Review dependencies.
+- Remove unused risky packages.
+- Suggest tools: pip-audit, safety, bandit, ruff.
+
+9. Errors
+- Hide stack traces from users.
+- Add centralized error handling.
+
+10. Tests
+Add tests for:
+- prompt injection
+- system prompt leakage
+- RAG injection
+- long input
+- invalid tool calls
+- SSRF
+- path traversal
+
+Workflow:
+
+Step 1: Analyze project structure.
+
+Step 2. Try to break the bot by crafting malicious inputs, tool calls, and RAG content.
+
+Step 3. Identify vulnerabilities and document them.
+
+Step 4. Prioritize risks based on severity and exploitability.
+
+Step 5. Implement fixes for high-priority issues.
+
+Step 6: Add tests.
+
+Step 7: Run checks:
+- pytest
+- ruff
+- bandit
+- pip-audit
+
+Step 8: Produce report.
+
+Report format:
+
+# Security Audit Report
+
+## Summary
+
+## Fixed Issues
+| Severity | Issue | Files | Fix |
+
+## Remaining Risks
+| Risk | Reason | Recommendation |
+
+## Tests
+
+## Manual Actions Required
+
+Done criteria:
+- Prompt injection mitigated
+- Tools validated
+- No secret leakage
+- Limits enforced
+- Safe error handling
+- Tests exist
+
+
+</task>
+<otput>
+  Create plan and tasks
+</otput>

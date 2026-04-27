@@ -1,46 +1,56 @@
-# 📋 Tasks — Modular Monolith and Event-Driven Chat Flow
+# 📋 Tasks — Security Hardening
 ---
 
-## Phase 1 — Modular Monolith Foundation
+## Phase 1 — Tool & SSRF Hardening
 
-### MM-01 Define module boundaries and shared contracts
-Create the target module layout and shared public contracts for users, chat/AI, history, and events so implementation tasks have stable interfaces to follow.
-→ [MM-01_define-module-boundaries.md](./tasks/MM-01_define-module-boundaries.md)
+### TSH-01 Block private and metadata targets in http_request
+Add an SSRF guard to `src/agent/tools.py` that rejects URLs whose resolved host is loopback (127.0.0.0/8, ::1), private RFC1918, link-local (169.254.0.0/16 — including the cloud metadata endpoint 169.254.169.254), or otherwise non-public, both before the initial request and on every redirect hop.
+→ [TSH-01_block-private-targets-in-http-request.md](./tasks/TSH-01_block-private-targets-in-http-request.md)
 
-### MM-02 Introduce Users module
-Add a Users module responsible for identifying Telegram users and storing in-memory user records behind a public service interface.
-→ [MM-02_introduce-users-module.md](./tasks/MM-02_introduce-users-module.md)
+### TSH-02 Validate tool-call arguments with explicit schemas
+Add deterministic argument validation in the agent loop so each tool's `args_schema` is enforced before `run()` is called. Reject unknown tools, unknown keys, and wrong types with a structured `[tool_error]` observation instead of letting the tool see arbitrary input.
+→ [TSH-02_validate-tool-arguments.md](./tasks/TSH-02_validate-tool-arguments.md)
 
-### MM-03 Isolate Chat/AI module
-Move chat response generation behind a Chat/AI module interface that owns LLM interaction and keeps Telegram handlers independent from AI internals.
-→ [MM-03_isolate-chat-ai-module.md](./tasks/MM-03_isolate-chat-ai-module.md)
+### TSH-03 Optional outbound domain allowlist for http_request
+Introduce an optional comma-separated `AGENT_TOOL_HTTP_DOMAIN_ALLOWLIST` setting; when configured, `http_request` only contacts hosts in the list. Empty/unset preserves current open-Internet behavior for development.
+→ [TSH-03_http-tool-domain-allowlist.md](./tasks/TSH-03_http-tool-domain-allowlist.md)
 
-### MM-04 Isolate History module
-Move message history operations behind a History module interface that owns append, retrieval, trimming, and summarization boundaries.
-→ [MM-04_isolate-history-module.md](./tasks/MM-04_isolate-history-module.md)
+## Phase 2 — Input & DoS Protection
 
-## Phase 2 — Event Bus and Integration
+### IDP-01 Enforce maximum user input length
+Add `MAX_USER_INPUT_CHARS` to settings and reject Telegram messages and `/agent` tasks longer than the limit with a polite reply. Prevents prompt-stuffing DoS and runaway token cost.
+→ [IDP-01_max-user-input-length.md](./tasks/IDP-01_max-user-input-length.md)
 
-### EB-01 Implement in-memory event bus
-Create a lightweight typed event bus with publish/subscribe support, structured logging, and safe handler execution.
-→ [EB-01_implement-in-memory-event-bus.md](./tasks/EB-01_implement-in-memory-event-bus.md)
+### IDP-02 Per-user rate limiting
+Add a lightweight in-memory rate limiter (token-bucket or fixed-window) keyed by Telegram user id. Configurable via `RATE_LIMIT_REQUESTS_PER_MINUTE`; exceeded requests get a short polite reply without invoking the LLM or agent.
+→ [IDP-02_per-user-rate-limiting.md](./tasks/IDP-02_per-user-rate-limiting.md)
 
-### EB-02 Wire module subscriptions
-Register History module subscribers for chat events and wire event bus dependencies through runtime/bootstrap without hidden globals.
-→ [EB-02_wire-module-subscriptions.md](./tasks/EB-02_wire-module-subscriptions.md)
+### IDP-03 Sanitize secrets in logs
+Add a `sanitize_log_data()` helper that masks bot tokens, API keys, bearer/authorization headers, and cookie values. Wire it into the user-message log line in `src/handlers.py` and into structured agent/context logs so secrets pasted by users (or accidentally captured in observations) never reach console or file sinks.
+→ [IDP-03_sanitize-logs.md](./tasks/IDP-03_sanitize-logs.md)
 
-### EB-03 Publish chat flow events
-Update the user message flow to publish `UserCreated`, `MessageReceived`, and `ResponseGenerated` events while preserving current Telegram behavior.
-→ [EB-03_publish-chat-flow-events.md](./tasks/EB-03_publish-chat-flow-events.md)
+## Phase 3 — Prompt Injection Mitigation
 
-## Phase 3 — Validation and Documentation
+### PIM-01 Strict role delimiters in prompt builder
+Update `_messages_to_prompt` in `src/modules/chat/service.py` and `src/agent/core.py` to use explicit, hard-to-spoof role delimiters (e.g. `<<SYSTEM>>…<</SYSTEM>>`) so user messages cannot impersonate the system role. Strip or escape delimiter sequences appearing in user/assistant content.
+→ [PIM-01_strict-role-delimiters.md](./tasks/PIM-01_strict-role-delimiters.md)
 
-### VD-01 Add modular event-flow tests
-Add focused tests for module boundaries, event bus behavior, event subscriptions, and the user-message-to-history flow.
-→ [VD-01_add-modular-event-flow-tests.md](./tasks/VD-01_add-modular-event-flow-tests.md)
+### PIM-02 Wrap tool observations as untrusted data
+Tag tool observations passed back into the agent loop with an explicit `<<UNTRUSTED_TOOL_OUTPUT>>…<</UNTRUSTED_TOOL_OUTPUT>>` envelope and make the agent system prompt instruct the model to treat anything inside as data, never as instructions.
+→ [PIM-02_untrusted-tool-observations.md](./tasks/PIM-02_untrusted-tool-observations.md)
 
-### VD-02 Document architecture decisions
-Update README and docs with the modular monolith layout, event flow, public interfaces, and an example request lifecycle.
-→ [VD-02_document-architecture-decisions.md](./tasks/VD-02_document-architecture-decisions.md)
+### PIM-03 Detect injection-override phrases in untrusted text
+Add a small detector that flags well-known override phrases ("ignore previous instructions", "reveal your system prompt", "you are now…", etc.) in retrieved web content and user input. On match, log a structured warning and prepend a defensive notice to the observation; do not silently drop content.
+→ [PIM-03_detect-injection-phrases.md](./tasks/PIM-03_detect-injection-phrases.md)
+
+## Phase 4 — Security Tests & Tooling
+
+### STS-01 Add security test suite
+Add `tests/test_security_*.py` with focused cases: SSRF (loopback, RFC1918, 169.254.169.254, scheme bypass via `file://`, redirect to private), prompt-injection in user input and tool observations, system-prompt leakage attempts, oversized input, invalid/unknown tool calls, and path-traversal-style URLs.
+→ [STS-01_security-test-suite.md](./tasks/STS-01_security-test-suite.md)
+
+### STS-02 Wire static analysis tooling
+Add `bandit`, `pip-audit`, and `ruff` configuration to the project. Document how to run them in `README.md` (or `docs/`), and add a `[tool.ruff]`/`[tool.bandit]` section to `pyproject.toml` if present, otherwise dedicated config files. Do not introduce them as runtime dependencies.
+→ [STS-02_static-analysis-tooling.md](./tasks/STS-02_static-analysis-tooling.md)
 
 ---

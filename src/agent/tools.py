@@ -1,7 +1,9 @@
 import ast
 import asyncio
+import ipaddress
 import json
 import logging
+import socket
 from dataclasses import dataclass
 from html.parser import HTMLParser
 from typing import Any, Callable
@@ -89,6 +91,12 @@ async def http_request(args: dict) -> str:
         normalized_url = _normalize_url(raw_url)
         if not normalized_url:
             return "[tool_error] URL must use a valid http or https address"
+
+        parsed_initial = urlparse(normalized_url)
+        is_safe, error_msg = await _check_host_security(parsed_initial.netloc)
+        if not is_safe:
+            return f"[tool_error] {error_msg}"
+
         settings = _settings()
 
         headers = {
@@ -96,14 +104,17 @@ async def http_request(args: dict) -> str:
             "Accept": "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8",
         }
         timeout = httpx.Timeout(settings.agent.tools.timeout)
-        async with httpx.AsyncClient(timeout=timeout, follow_redirects=settings.agent.tools.follow_redirects) as client:
-            document = await _fetch_text(
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            document = await _fetch_text_with_redirects(
                 client=client,
                 method=method,
                 url=normalized_url,
                 headers=headers,
                 byte_limit=settings.agent.tools.max_html_bytes,
             )
+
+            if isinstance(document, str):
+                return document
 
             if document.status_code >= 400:
                 return (
@@ -248,6 +259,51 @@ class _PageParser(HTMLParser):
         self.resources.append({"type": kind, "url": raw_url})
 
 
+def _is_private_ip(ip_obj: ipaddress.ip_address) -> bool:
+    """Check if an IP is loopback, private, link-local, or reserved."""
+    return (
+        ip_obj.is_loopback
+        or ip_obj.is_private
+        or ip_obj.is_link_local
+        or ip_obj.is_reserved
+        or ip_obj.is_multicast
+    )
+
+
+async def _check_host_security(hostname: str) -> tuple[bool, str | None]:
+    """Verify hostname does not resolve to a private/loopback IP.
+
+    Returns:
+        (is_safe, error_reason) — (True, None) if safe; (False, reason) if blocked.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(
+            None,
+            socket.getaddrinfo,
+            hostname,
+            None,
+            socket.AF_UNSPEC,
+            socket.SOCK_STREAM,
+        )
+
+        if not results:
+            return False, "could_not_resolve_hostname"
+
+        for family, socktype, proto, canonname, sockaddr in results:
+            ip_str = sockaddr[0]
+            try:
+                ip_obj = ipaddress.ip_address(ip_str)
+                if _is_private_ip(ip_obj):
+                    return False, f"blocked_target: resolved to private IP {ip_str}"
+            except ValueError:
+                return False, f"invalid_ip_address: {ip_str}"
+
+        return True, None
+    except (socket.gaierror, OSError) as e:
+        return False, f"dns_resolution_failed: {e}"
+
+
 def _normalize_url(raw_url: str) -> str | None:
     normalized = urldefrag(raw_url.strip())[0]
     parsed = urlparse(normalized)
@@ -256,6 +312,75 @@ def _normalize_url(raw_url: str) -> str | None:
     if not parsed.netloc:
         return None
     return normalized
+
+
+async def _fetch_text_with_redirects(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    headers: dict[str, str],
+    byte_limit: int,
+    max_redirects: int = 5,
+) -> FetchPayload | str:
+    """Fetch with manual redirect handling and SSRF checks on each hop.
+
+    Returns:
+        FetchPayload on success, or a string error message on failure.
+    """
+    current_url = url
+    for hop in range(max_redirects + 1):
+        parsed = urlparse(current_url)
+        is_safe, error_msg = await _check_host_security(parsed.netloc)
+        if not is_safe:
+            return f"[tool_error] {error_msg}"
+
+        content = bytearray()
+        truncated = False
+
+        try:
+            async with client.stream(method, current_url, headers=headers) as response:
+                async for chunk in response.aiter_bytes():
+                    if not chunk:
+                        continue
+                    allowed = byte_limit - len(content)
+                    if allowed <= 0:
+                        truncated = True
+                        break
+                    if len(chunk) > allowed:
+                        content.extend(chunk[:allowed])
+                        truncated = True
+                        break
+                    content.extend(chunk)
+
+                status_code = response.status_code
+                reason_phrase = response.reason_phrase or ""
+                content_type = response.headers.get("content-type", "")
+                location = response.headers.get("location", "")
+
+                if status_code in {301, 302, 303, 307, 308} and location:
+                    current_url = urljoin(current_url, location)
+                    if not _normalize_url(current_url):
+                        return f"[tool_error] blocked_target: redirect to invalid URL"
+                    continue
+
+                encoding = response.encoding or "utf-8"
+                body = bytes(content).decode(encoding, errors="replace")
+
+                return FetchPayload(
+                    requested_url=url,
+                    final_url=str(response.url),
+                    status_code=status_code,
+                    reason_phrase=reason_phrase,
+                    content_type=content_type,
+                    encoding=encoding,
+                    body=body,
+                    body_bytes=len(content),
+                    truncated=truncated,
+                )
+        except (httpx.HTTPError, asyncio.TimeoutError) as e:
+            return f"[tool_error] {type(e).__name__}"
+
+    return f"[tool_error] blocked_target: too many redirects"
 
 
 async def _fetch_text(
@@ -375,6 +500,12 @@ async def _load_resources(
 
         if not _is_same_origin(base, urlparse(resolved)):
             skipped.append({"type": kind, "url": resolved, "reason": "cross_origin"})
+            continue
+
+        parsed_resolved = urlparse(resolved)
+        is_safe, error_msg = await _check_host_security(parsed_resolved.netloc)
+        if not is_safe:
+            skipped.append({"type": kind, "url": resolved, "reason": "blocked_by_ssrf_guard"})
             continue
 
         if len(loaded) >= max_count:

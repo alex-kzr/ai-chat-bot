@@ -1,17 +1,21 @@
-# Feature: Modular Monolith and Event-Driven Chat Flow
+# Feature: Security Hardening
 
-This plan evolves the Telegram AI chatbot into a modular monolith with clear users, chat/AI, and history boundaries, then introduces an in-memory event bus so modules communicate through public contracts instead of reaching into each other's internals.
+This plan adds security controls to the Telegram AI chatbot to mitigate prompt injection, server-side request forgery (SSRF), unsafe tool usage, denial-of-service, and accidental disclosure of secrets in logs. The bot exposes an LLM, chat history, an agent loop with tools (`calculator`, `http_request`), and runs against a local Ollama instance, so the surface area covers user input, tool execution, retrieved web content, and observability.
 
-The design follows the current Python service-oriented structure in `src/`, keeps dependencies explicit through runtime wiring, and avoids external infrastructure such as Kafka or RabbitMQ.
+The work preserves existing behavior, public bot commands, and the modular monolith architecture (`src/modules/*`, `src/agent/*`, `src/services/*`). Changes are minimal, configuration-driven where possible, and validated by focused tests.
 
-## Phase 1: Modular Monolith Foundation (MM-01 to MM-04)
+## Phase 1: Tool & SSRF Hardening (TSH-01 to TSH-03)
 
-Split the current chat flow into focused feature modules with explicit public interfaces. This phase introduces user identification, chat/AI response generation, and history management as separate package boundaries while keeping behavior compatible with the existing Telegram bot.
+Lock down the `http_request` tool against SSRF and unsafe targets (loopback, private RFC1918, link-local, cloud metadata endpoints), validate tool-call arguments via explicit schemas before execution, and re-check redirect targets so an attacker cannot bounce through a public host into an internal one.
 
-## Phase 2: Event Bus and Integration (EB-01 to EB-03)
+## Phase 2: Input & DoS Protection (IDP-01 to IDP-03)
 
-Add a lightweight in-memory event system and wire module interactions through events where direct cross-module calls are not required. This phase establishes event contracts for `UserCreated`, `MessageReceived`, and `ResponseGenerated`.
+Add deterministic limits at the request boundary: maximum user input length in Telegram handlers, per-user rate limiting, and a centralized log sanitizer that masks secret-looking tokens (bot tokens, API keys, bearer headers, cookies) before they reach console or file logs.
 
-## Phase 3: Validation and Documentation (VD-01 to VD-02)
+## Phase 3: Prompt Injection Mitigation (PIM-01 to PIM-03)
 
-Prove the architecture with focused tests and update documentation so the event-driven modular monolith is understandable, runnable, and ready for future persistence or external messaging.
+Strengthen the trust boundary between system instructions, user input, chat history, and tool observations. Use unambiguous role-tagged delimiters in the prompt builder, wrap tool observations in an explicit "untrusted data" envelope, and detect/flag known instruction-override patterns ("ignore previous instructions", "reveal your system prompt", etc.) so the LLM cannot be silently steered by retrieved content.
+
+## Phase 4: Security Tests & Tooling (STS-01 to STS-02)
+
+Add a focused security test suite covering SSRF, prompt injection, oversized input, system-prompt leakage, and invalid tool calls. Wire static analysis (`bandit`, `pip-audit`, `ruff`) into the project tooling and document how to run them locally.

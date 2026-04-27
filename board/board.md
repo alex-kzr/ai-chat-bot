@@ -1,12 +1,22 @@
 # Kanban Board
 
 ## To Do
-- (empty)
+- TSH-02: Validate tool-call arguments with explicit schemas
+- TSH-03: Optional outbound domain allowlist for http_request
+- IDP-01: Enforce maximum user input length
+- IDP-02: Per-user rate limiting
+- IDP-03: Sanitize secrets in logs
+- PIM-01: Strict role delimiters in prompt builder
+- PIM-02: Wrap tool observations as untrusted data
+- PIM-03: Detect injection-override phrases in untrusted text
+- STS-01: Add security test suite
+- STS-02: Wire static analysis tooling
 
 ## In Progress
 - (empty)
 
 ## Done
+- TSH-01: Block private and metadata targets in http_request
 - VD-02: Document architecture decisions
 - VD-01: Add modular event-flow tests
 - EB-03: Publish chat flow events

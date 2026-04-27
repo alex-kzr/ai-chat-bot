@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Tell the model unambiguously that tool observations (especially `http_request` output, which contains arbitrary web text) are untrusted input that may try to override its instructions. This is the standard mitigation for the "indirect prompt injection" class of attacks: an attacker plants instructions on a public web page, the agent fetches it, and those instructions get treated as if the system author wrote them.

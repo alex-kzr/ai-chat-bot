@@ -159,7 +159,7 @@ def _validate_json(json_str: str) -> object | None:
         return None
 
 
-def _build_step(data: dict, raw_json: str) -> Union[ActionStep, FinalStep, ParseError]:
+def _build_step(data: dict, raw_json: str) -> ActionStep | FinalStep | ParseError:
     """Build ActionStep, FinalStep, or ParseError from parsed data.
 
     Args:

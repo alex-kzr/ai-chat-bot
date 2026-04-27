@@ -2,14 +2,16 @@ import asyncio
 import logging
 import random
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.enums import ChatAction
 from aiogram.filters import Command
 from aiogram.types import Message
 
 from .events import UserCreated
-from .runtime import get_runtime
 from .prompts import ERROR_PHRASES
+from .runtime import get_runtime
+from .security.injection_patterns import detect_injection_attempt
+from .security.log_sanitizer import sanitize_log_data
 
 router = Router()
 
@@ -42,6 +44,10 @@ async def handle_agent(message: Message) -> None:
     if created:
         await runtime.event_bus.publish(UserCreated(user_id=user_id, username=user.username))
 
+    if not await runtime.rate_limiter.is_allowed(user_id):
+        await message.answer("You're sending requests too quickly. Please slow down.")
+        return
+
     task = message.text.replace("/agent", "", 1).strip()
     if not task:
         await message.answer("Usage: `/agent <task>`\n\nExample: `/agent What is 12*15?`", parse_mode="Markdown")
@@ -52,7 +58,16 @@ async def handle_agent(message: Message) -> None:
         await message.answer(f"Task is too long (max {max_chars} characters).")
         return
 
-    logging.info(">>> %s (agent): %s", user_display, task)
+    # Check for injection patterns in user input (logged but not blocked)
+    injection_matches = detect_injection_attempt(task)
+    if injection_matches:
+        logging.warning(
+            "Injection patterns detected in /agent task from %s: %s",
+            user_display,
+            injection_matches,
+        )
+
+    logging.info(">>> %s (agent): %s", user_display, sanitize_log_data(task))
 
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
@@ -77,13 +92,26 @@ async def handle_text(message: Message) -> None:
     if created:
         await runtime.event_bus.publish(UserCreated(user_id=user_id, username=user.username))
 
+    if not await runtime.rate_limiter.is_allowed(user_id):
+        await message.answer("You're sending requests too quickly. Please slow down.")
+        return
+
     max_chars = runtime.settings.security.max_user_input_chars
     text = message.text.strip()
     if len(text) > max_chars:
         await message.answer(f"Message is too long (max {max_chars} characters).")
         return
 
-    logging.info(">>> %s: %s", user_display, text)
+    # Check for injection patterns in user input (logged but not blocked)
+    injection_matches = detect_injection_attempt(text)
+    if injection_matches:
+        logging.warning(
+            "Injection patterns detected in text message from %s: %s",
+            user_display,
+            injection_matches,
+        )
+
+    logging.info(">>> %s: %s", user_display, sanitize_log_data(text))
 
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
@@ -117,7 +145,7 @@ def _split_message(text: str, limit: int = _TELEGRAM_MAX_LEN) -> list[str]:
 
 async def _log_response(llm_raw: str, bot_reply: str) -> None:
     if llm_raw == bot_reply:
-        logging.info("<<< LLM: %s", llm_raw)
+        logging.info("<<< LLM: %s", sanitize_log_data(llm_raw))
     else:
-        logging.info("<<< LLM: %s", llm_raw)
-        logging.info("<<< BOT: %s", bot_reply)
+        logging.info("<<< LLM: %s", sanitize_log_data(llm_raw))
+        logging.info("<<< BOT: %s", sanitize_log_data(bot_reply))

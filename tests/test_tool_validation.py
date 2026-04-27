@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
-from src.agent.tools import validate_tool_args, TOOLS
+from src.agent.tools import TOOLS, validate_tool_args
 
 
 def test_validate_tool_args_valid_calculator() -> None:

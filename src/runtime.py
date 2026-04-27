@@ -3,16 +3,17 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from .agent.service import AgentOrchestrator
 from .config import Settings
+from .context_logging import configure_context_logging
+from .events import MessageReceived, ResponseGenerated
+from .events.bus import EventBus
+from .modules.chat import ChatService
 from .modules.history import ConversationService
 from .modules.users import UserService
-from .modules.chat import ChatService
-from .events.bus import EventBus
-from .events import MessageReceived, ResponseGenerated
 from .ollama_gateway import OllamaGateway
 from .services.chat_orchestrator import ChatOrchestrator
-from .agent.service import AgentOrchestrator
-from .context_logging import configure_context_logging
+from .services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ class AppRuntime:
     chat_service: ChatService
     agent_orchestrator: AgentOrchestrator
     chat_orchestrator: ChatOrchestrator
+    rate_limiter: RateLimiter
 
 
 _runtime: AppRuntime | None = None
@@ -48,6 +50,10 @@ def create_runtime(settings: Settings) -> AppRuntime:
         event_bus=event_bus,
         show_thinking=settings.logging.show_thinking,
     )
+    rate_limiter = RateLimiter(
+        requests_per_minute=settings.security.rate_limit_requests_per_minute,
+        burst=settings.security.rate_limit_burst,
+    )
     return AppRuntime(
         settings=settings,
         users=users,
@@ -57,6 +63,7 @@ def create_runtime(settings: Settings) -> AppRuntime:
         chat_service=chat_service,
         agent_orchestrator=agent_orchestrator,
         chat_orchestrator=chat_orchestrator,
+        rate_limiter=rate_limiter,
     )
 
 

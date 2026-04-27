@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Make obvious prompt-injection attempts visible to operators and add a defensive notice when they appear in tool observations. This is not a security boundary on its own — a determined attacker can paraphrase — but it adds observability and a low-cost extra hint to the model.

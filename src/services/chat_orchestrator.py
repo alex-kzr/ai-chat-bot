@@ -4,9 +4,9 @@ import logging
 import re
 from dataclasses import dataclass
 
+from src.agent.service import AgentOrchestrator
 from src.contracts import LLMReply
 from src.conversation import ConversationService
-from src.agent.service import AgentOrchestrator
 from src.events import MessageReceived, ResponseGenerated
 from src.events.bus import EventBus
 from src.modules.chat.service import ChatService

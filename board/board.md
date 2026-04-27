@@ -1,18 +1,17 @@
 # Kanban Board
 
 ## To Do
-- IDP-02: Per-user rate limiting
-- IDP-03: Sanitize secrets in logs
-- PIM-01: Strict role delimiters in prompt builder
-- PIM-02: Wrap tool observations as untrusted data
-- PIM-03: Detect injection-override phrases in untrusted text
-- STS-01: Add security test suite
-- STS-02: Wire static analysis tooling
 
 ## In Progress
-- (empty)
 
 ## Done
+- STS-02: Wire static analysis tooling
+- STS-01: Add security test suite
+- PIM-03: Detect injection-override phrases in untrusted text
+- PIM-02: Wrap tool observations as untrusted data
+- PIM-01: Strict role delimiters in prompt builder
+- IDP-03: Sanitize secrets in logs
+- IDP-02: Per-user rate limiting
 - IDP-01: Enforce maximum user input length
 - TSH-03: Optional outbound domain allowlist for http_request
 - TSH-02: Validate tool-call arguments with explicit schemas

@@ -4,9 +4,10 @@ import ipaddress
 import json
 import logging
 import socket
+from collections.abc import Callable
 from dataclasses import dataclass
 from html.parser import HTMLParser
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import urldefrag, urljoin, urlparse
 
 import httpx
@@ -143,7 +144,7 @@ async def http_request(args: dict) -> str:
         settings = _settings()
 
         if not _host_matches_allowlist(parsed_initial.netloc, settings.agent.tools.http_domain_allowlist):
-            return f"[tool_error] blocked_target: not_in_allowlist"
+            return "[tool_error] blocked_target: not_in_allowlist"
 
         headers = {
             "User-Agent": settings.agent.tools.user_agent,
@@ -406,7 +407,7 @@ async def _fetch_text_with_redirects(
             return f"[tool_error] {error_msg}"
 
         if not _host_matches_allowlist(parsed.netloc, settings.agent.tools.http_domain_allowlist):
-            return f"[tool_error] blocked_target: not_in_allowlist"
+            return "[tool_error] blocked_target: not_in_allowlist"
 
         content = bytearray()
         truncated = False
@@ -434,7 +435,7 @@ async def _fetch_text_with_redirects(
                 if status_code in {301, 302, 303, 307, 308} and location:
                     current_url = urljoin(current_url, location)
                     if not _normalize_url(current_url):
-                        return f"[tool_error] blocked_target: redirect to invalid URL"
+                        return "[tool_error] blocked_target: redirect to invalid URL"
                     continue
 
                 encoding = response.encoding or "utf-8"
@@ -454,7 +455,7 @@ async def _fetch_text_with_redirects(
         except (httpx.HTTPError, asyncio.TimeoutError) as e:
             return f"[tool_error] {type(e).__name__}"
 
-    return f"[tool_error] blocked_target: too many redirects"
+    return "[tool_error] blocked_target: too many redirects"
 
 
 async def _fetch_text(

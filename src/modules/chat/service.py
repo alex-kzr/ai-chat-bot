@@ -9,8 +9,7 @@ from src.config import Settings
 from src.context_logging import count_context_tokens, extract_context, log_context
 from src.contracts import ChatMessage, LLMReply
 from src.errors import OllamaProtocolError, OllamaTransportError
-from src.prompts import ERROR_PHRASES
-
+from src.prompts import ERROR_PHRASES, build_delimited_prompt
 
 logger = logging.getLogger("src.llm")
 
@@ -77,17 +76,7 @@ class _ThinkingStreamDebugLogger:
 
 
 def _messages_to_prompt(messages: list[ChatMessage]) -> str:
-    prompt_parts: list[str] = []
-    for msg in messages:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        if role == "system":
-            prompt_parts.append(content)
-        elif role == "user":
-            prompt_parts.append(f"User: {content}")
-        elif role == "assistant":
-            prompt_parts.append(f"Assistant: {content}")
-    return "\n\n".join(prompt_parts) + "\n\nAssistant:"
+    return build_delimited_prompt(messages)
 
 
 class ChatService:

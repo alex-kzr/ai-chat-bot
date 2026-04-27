@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import ipaddress
+
 import pytest
 
-from src.agent.tools import _is_private_ip, _check_host_security, http_request
-import ipaddress
+from src.agent.tools import _check_host_security, _is_private_ip, http_request
 
 
 def test_is_private_ip_loopback_v4() -> None:

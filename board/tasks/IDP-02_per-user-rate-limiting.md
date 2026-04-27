@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Stop a single Telegram user from monopolizing the local LLM or agent loop. The bot has no authentication, no per-user accounting, and the agent loop can run multiple expensive HTTP fetches per request — a single abusive client can degrade service for everyone.

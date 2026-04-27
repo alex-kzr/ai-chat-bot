@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
-from src.agent.tools import _host_matches_allowlist, http_request
+from src.agent.tools import _host_matches_allowlist
 
 
 def test_host_matches_allowlist_empty() -> None:

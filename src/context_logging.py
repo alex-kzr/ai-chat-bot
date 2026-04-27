@@ -1,16 +1,17 @@
-import logging
 import json
+import logging
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from src import config
 from src.config import Settings
+from src.security.log_sanitizer import sanitize_log_data
 
 # Module-level singleton logger
-_context_logger: Optional[logging.Logger] = None
-_context_settings: Optional[Settings] = None
+_context_logger: logging.Logger | None = None
+_context_settings: Settings | None = None
 
 
 def _close_logger_handlers(logger: logging.Logger) -> None:
@@ -145,7 +146,7 @@ def setup_context_logger() -> logging.Logger:
     return _context_logger
 
 
-def format_log_entry(data: Dict[str, Any], format_type: Optional[str] = None) -> str:
+def format_log_entry(data: dict[str, Any], format_type: str | None = None) -> str:
     """
     Format a context log dictionary into readable text or JSON.
 
@@ -165,7 +166,7 @@ def format_log_entry(data: Dict[str, Any], format_type: Optional[str] = None) ->
         return _format_human(data)
 
 
-def _format_human(data: Dict[str, Any]) -> str:
+def _format_human(data: dict[str, Any]) -> str:
     """
     Format log data in human-readable format with clear sections and indentation.
 
@@ -202,7 +203,7 @@ def _format_human(data: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _format_json(data: Dict[str, Any]) -> str:
+def _format_json(data: dict[str, Any]) -> str:
     """
     Format log data as valid JSON.
 
@@ -256,7 +257,7 @@ def _indent_value(value: Any, spaces: int = 2) -> str:
         return f"{indent}{value}"
 
 
-def log_context(data: Dict[str, Any], level: str = "info") -> None:
+def log_context(data: dict[str, Any], level: str = "info") -> None:
     """
     Log context data using the configured logger.
 
@@ -290,7 +291,7 @@ def log_agent_event(run_id: str, event: str, *, level: str = "info", **fields: A
         "kind": "agent_event",
         "run_id": run_id,
         "event": event,
-        **fields,
+        **sanitize_log_data(fields),
     }
     message = json.dumps(record, ensure_ascii=False, sort_keys=True, default=str)
 
@@ -309,11 +310,11 @@ def log_agent_event(run_id: str, event: str, *, level: str = "info", **fields: A
 
 def extract_context(
     messages: list[dict],
-    user_id: Optional[str] = None,
-    model_name: Optional[str] = None,
-    temperature: Optional[float] = None,
-    max_tokens: Optional[int] = None
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    model_name: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None
+) -> dict[str, Any]:
     """
     Extract and organize the full LLM request context into a structured format.
 
@@ -367,12 +368,13 @@ def serialize_messages(
 
         if include_content:
             content = msg.get("content", "")
-            if len(content) > max_content_length:
-                serialized_msg["content"] = content[:max_content_length] + "..."
+            sanitized_content = sanitize_log_data(content)
+            if len(sanitized_content) > max_content_length:
+                serialized_msg["content"] = sanitized_content[:max_content_length] + "..."
                 serialized_msg["content_truncated"] = True
                 serialized_msg["original_length"] = len(content)
             else:
-                serialized_msg["content"] = content
+                serialized_msg["content"] = sanitized_content
                 serialized_msg["content_truncated"] = False
 
         serialized.append(serialized_msg)
@@ -381,11 +383,11 @@ def serialize_messages(
 
 
 def extract_metadata(
-    user_id: Optional[str] = None,
-    model_name: Optional[str] = None,
-    temperature: Optional[float] = None,
-    max_tokens: Optional[int] = None
-) -> Dict[str, Any]:
+    user_id: str | None = None,
+    model_name: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None
+) -> dict[str, Any]:
     """
     Extract and organize request metadata.
 
@@ -414,7 +416,7 @@ def extract_metadata(
     return metadata
 
 
-def _count_message_roles(messages: list[dict]) -> Dict[str, int]:
+def _count_message_roles(messages: list[dict]) -> dict[str, int]:
     """
     Count messages by role.
 

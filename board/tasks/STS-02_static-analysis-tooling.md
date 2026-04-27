@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Make security and quality issues visible without depending on humans noticing them. `bandit` catches common Python security pitfalls (e.g. `subprocess` with shell, weak crypto, `pickle`), `pip-audit` flags vulnerable dependencies, and `ruff` keeps the codebase linted.

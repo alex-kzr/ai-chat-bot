@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Lock in the behaviors introduced by phases 1–3 with focused tests so regressions are caught immediately. The existing test suite covers happy-path contracts; this task adds adversarial cases.

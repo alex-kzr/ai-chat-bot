@@ -5,10 +5,10 @@ import logging
 import sys
 
 from . import config
-from .config import Settings, SettingsError
-from .runtime import create_runtime, set_runtime
 from .bot import run_bot
+from .config import Settings, SettingsError
 from .errors import OllamaTransportError
+from .runtime import create_runtime, set_runtime
 
 
 def configure_root_logging(level: str = "INFO") -> None:

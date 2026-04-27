@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.config import load_settings, SecuritySettings
+from src.config import SecuritySettings, load_settings
 
 
 def test_max_user_input_chars_default() -> None:
@@ -31,5 +31,7 @@ def test_max_user_input_chars_at_minimum() -> None:
 
 
 def test_security_settings_dataclass() -> None:
-    sec = SecuritySettings(max_user_input_chars=2000)
+    sec = SecuritySettings(max_user_input_chars=2000, rate_limit_requests_per_minute=20, rate_limit_burst=5)
     assert sec.max_user_input_chars == 2000
+    assert sec.rate_limit_requests_per_minute == 20
+    assert sec.rate_limit_burst == 5

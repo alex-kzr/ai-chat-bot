@@ -25,6 +25,28 @@ ruff check src tests
 mypy src
 ```
 
+### Static analysis
+
+The project uses three security and code quality tools:
+
+```bash
+# Linting and code style (configured in pyproject.toml)
+ruff check src tests
+ruff format src tests  # auto-fix formatting
+
+# Security checks (configured in pyproject.toml)
+bandit -r src  # Python security issues
+
+# Dependency vulnerability scanning
+pip-audit -r requirements.txt  # known vulnerabilities
+```
+
+- **ruff**: Enforces code style, imports, and Python best practices
+- **bandit**: Detects common security pitfalls (subprocess, weak crypto, pickle, etc.)
+- **pip-audit**: Reports known vulnerabilities in dependencies
+
+All tools run against source code only (tests use assertions which bandit flags separately). No pre-commit hooks are configured — run these manually before committing.
+
 ---
 
 ## Documentation

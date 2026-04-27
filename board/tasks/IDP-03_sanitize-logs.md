@@ -3,7 +3,7 @@
 ## Status
 - [ ] To Do
 - [ ] In Progress
-- [ ] Done
+- [x] Done
 
 ## Purpose
 Prevent secrets pasted by users (or surfaced by tools) from being written to console or file logs. The current code logs raw message text in `src/handlers.py` (`logging.info(">>> %s: %s", user_display, message.text)`) and also logs full LLM input/output context in `src/context_logging.py`. A user who pastes a Telegram bot token, API key, OAuth bearer, or `Authorization: Bearer …` snippet into the chat will leak it to the operator's logs.

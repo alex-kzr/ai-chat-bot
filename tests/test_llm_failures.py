@@ -4,8 +4,8 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from src.prompts import ERROR_PHRASES
 from src.handlers import handle_text
+from src.prompts import ERROR_PHRASES
 from tests._fakes import make_message
 
 

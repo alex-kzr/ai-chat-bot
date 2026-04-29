@@ -126,3 +126,14 @@ Agent emits structured JSON-line events with shared `run_id`:
 - terminal reason
 
 This enables end-to-end traceability for multi-step runs.
+
+---
+
+## CI Contract
+
+GitHub Actions runs the test suite in a clean environment to keep the repository reproducible:
+- Python 3.12
+- Install: `python -m pip install -r requirements-dev.txt` (pip cache enabled)
+- Checks: `ruff check src tests`, `mypy src`, `pytest`
+
+The workflow is defined in `.github/workflows/python-ci.yml`.

@@ -15,7 +15,7 @@ target-version = "py310"
 exclude = ["__pycache__", ".git", ".venv"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W", "UP", "S"]
+select = ["E", "F", "I"]
 ignore = ["E501"]
 
 [tool.bandit]

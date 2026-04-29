@@ -8,7 +8,6 @@ from unittest.mock import AsyncMock
 
 from src.contracts import ChatMessage, LLMReply
 
-
 # ---------------------------------------------------------------------------
 # Ollama gateway fake
 # ---------------------------------------------------------------------------
@@ -35,9 +34,15 @@ class FakeOllamaGateway:
         # second call → raises ValueError
     """
 
-    def __init__(self, script: list[LLMReply | BaseException] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        script: list[LLMReply | BaseException] | None = None,
+        models: list[str] | None = None,
+    ) -> None:
         self.script: list[LLMReply | BaseException] = list(script or [])
         self.calls: list[GatewayCall] = []
+        self.models: list[str] = list(models or [])
 
     def _pop(self) -> LLMReply:
         """Pop next scripted item; raise if it is an exception."""
@@ -122,8 +127,9 @@ class FakeOllamaGateway:
         return reply.bot_reply
 
     async def list_models(self) -> list[str]:
-        """Always returns an empty model list; not scripted."""
-        return []
+        """Return the configured model list (default: empty)."""
+        self.calls.append(GatewayCall(method="list_models", model=""))
+        return list(self.models)
 
 
 # ---------------------------------------------------------------------------

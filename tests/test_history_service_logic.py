@@ -1,8 +1,9 @@
 """BLC-02 — ConversationService trim and summarization tests."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from src.config import load_settings
 from src.modules.history.service import ConversationService

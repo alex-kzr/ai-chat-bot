@@ -11,7 +11,6 @@ from src.config import load_settings
 from src.context_logging import configure_context_logging
 from src.contracts import LLMReply
 from src.runtime import AppRuntime
-
 from tests._fakes import FakeOllamaGateway
 
 

@@ -1,17 +1,17 @@
-# Feature: Agent Loop Safety and Streaming Protection
+# Feature: Production CI Pipeline for Python Telegram AI Bot
 
-This plan hardens the agent runtime against infinite generation, repeated tool loops, malformed structured output, and streams that never finish when using local or OpenAI-compatible LLM backends. The current architecture already has an iterative agent loop, a strict parser, and structured logging, but it still needs stronger runtime guardrails so one bad model response cannot keep the agent stuck forever.
+This plan adds a production-quality GitHub Actions pipeline for the Telegram AI bot so every push to `main` and every pull request is validated automatically in a clean Python 3.12 environment. The work covers the workflow itself, the project adjustments needed for deterministic test execution in CI, and the security and speed improvements required for a maintainable pipeline.
 
-The goal is to guarantee controlled termination across Ollama, vLLM, LM Studio, and other OpenAI-compatible gateways without coupling the fix to a single model family. The implementation must add hard runtime limits, detect repeated or cyclic states, enforce final-answer completion rules, and produce diagnostics that make failures easy to investigate. The work also includes unit and integration coverage for the main failure scenarios described in the prompt.
+The current codebase already has strong modularity, typed settings, and a broad pytest suite, which gives us a solid base. The remaining work is to make the repository fully CI-ready: align dependency and Python-version expectations, remove any hidden local-machine assumptions from tests, and document a secure, reproducible validation path.
 
-## Phase 1: Guardrails and Watchdogs (GW-01 to GW-04)
+## Phase 1: Workflow Foundation (WF-01 to WF-03)
 
-Introduce the hard runtime boundaries that keep one agent run finite: configurable step/retry/tool-call/response-size limits, stream and response timeouts, repeated-output detection, repeated-tool detection, and watchdog-based abort paths when the model stops making progress.
+Create the GitHub Actions workflow, make the repository install and test reliably on Python 3.12 in a clean runner, and document the local-to-CI execution contract so contributors can reproduce failures quickly.
 
-## Phase 2: Parser and Finalization Hardening (PF-01 to PF-03)
+## Phase 2: Testability Hardening (TH-01 to TH-03)
 
-Strengthen the structured-output contract so the agent can recover from noisy markdown/JSON, reject invalid action payloads deterministically, enforce final-answer completion, and terminate with a controlled error after bounded retries instead of re-prompting forever.
+Tighten the remaining seams around startup, Telegram integration, and LLM integration so tests stay isolated, deterministic, and independent from external services or developer-specific state.
 
-## Phase 3: Diagnostics and Validation (DV-01 to DV-03)
+## Phase 3: Quality and Security Gates (QS-01 to QS-03)
 
-Complete the feature with detailed loop diagnostics, targeted unit tests for the protection mechanisms, and integration scenarios that simulate infinite text repetition, repeated tool calls, malformed JSON, and non-terminating streams.
+Extend the CI design with fast quality gates, secure configuration handling, and lightweight optimizations that keep the pipeline stable, reproducible, and safe for production collaboration.

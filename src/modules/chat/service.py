@@ -101,7 +101,8 @@ class ChatService:
 
         messages: list[ChatMessage] = []
         if settings.system_prompt.enabled:
-            messages.append({"role": "system", "content": settings.system_prompt.prompt})
+            system_message: ChatMessage = {"role": "system", "content": settings.system_prompt.prompt}
+            messages.append(system_message)
         messages.extend(history)
 
         if settings.logging.context_enabled:

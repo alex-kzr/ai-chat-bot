@@ -1,8 +1,9 @@
 """BLC-03 — ChatOrchestrator routing and event-ordering tests."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from src.contracts import LLMReply
 from src.events import MessageReceived, ResponseGenerated

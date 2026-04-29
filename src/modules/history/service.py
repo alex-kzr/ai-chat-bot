@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from src.config import Settings
-from src.contracts import ChatMessage
+from src.contracts import ChatMessage, ChatRole
 from src.events import ChatReplyProduced, MessageReceived, ResponseGenerated, UserTextReceived
 from src.prompts import SUMMARIZATION_PROMPT
 
@@ -32,7 +32,7 @@ class ConversationService:
         history = self._store.get(user_id, [])
         return list(history[-limit:])
 
-    def append_message(self, user_id: int, role: str, content: str) -> None:
+    def append_message(self, user_id: int, role: ChatRole, content: str) -> None:
         history = self._store.setdefault(user_id, [])
         history.append({"role": role, "content": content})
         self._trim(user_id)
@@ -57,7 +57,8 @@ class ConversationService:
             return
 
         messages_to_summarize = full_history[: len(full_history) - keep_recent]
-        summary_prompt: list[ChatMessage] = [{"role": "system", "content": SUMMARIZATION_PROMPT}] + messages_to_summarize
+        system_prompt: ChatMessage = {"role": "system", "content": SUMMARIZATION_PROMPT}
+        summary_prompt: list[ChatMessage] = [system_prompt, *messages_to_summarize]
         summary = await self.ollama.chat_once(summary_prompt, model=self.settings.chat_model)
         if not summary:
             logger.warning("Summarization for user %s returned empty summary", user_id)

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from .agent.service import AgentOrchestrator
 from .config import Settings
 from .context_logging import configure_context_logging
+from .contracts import OllamaClient
 from .events import MessageReceived, ResponseGenerated
 from .events.bus import EventBus
 from .modules.chat import ChatService
@@ -23,7 +24,7 @@ class AppRuntime:
     settings: Settings
     users: UserService
     event_bus: EventBus
-    ollama: OllamaGateway
+    ollama: OllamaClient
     conversation: ConversationService
     chat_service: ChatService
     agent_orchestrator: AgentOrchestrator
@@ -36,25 +37,58 @@ _runtime_override: AppRuntime | None = None
 _runtime_override_stack: list[AppRuntime | None] = []
 
 
-def create_runtime(settings: Settings) -> AppRuntime:
-    configure_context_logging(settings)
-    users = UserService()
-    event_bus = EventBus()
-    ollama = OllamaGateway(settings)
-    conversation = ConversationService(settings=settings, ollama=ollama)
-    _register_event_handlers(event_bus, conversation)
-    chat_service = ChatService(settings=settings, ollama=ollama)
-    agent_orchestrator = AgentOrchestrator()
-    chat_orchestrator = ChatOrchestrator(
-        conversation=conversation,
-        agent=agent_orchestrator,
-        chat=chat_service,
-        event_bus=event_bus,
-        show_thinking=settings.logging.show_thinking,
+def create_runtime(
+    settings: Settings,
+    *,
+    users: UserService | None = None,
+    event_bus: EventBus | None = None,
+    ollama: OllamaClient | None = None,
+    conversation: ConversationService | None = None,
+    chat_service: ChatService | None = None,
+    agent_orchestrator: AgentOrchestrator | None = None,
+    chat_orchestrator: ChatOrchestrator | None = None,
+    rate_limiter: RateLimiter | None = None,
+    configure_logging: bool = True,
+    register_event_handlers: bool = True,
+) -> AppRuntime:
+    """Create the production runtime, with optional dependency injection.
+
+    The optional parameters are intended for tests and experiments that need to
+    supply deterministic fakes without monkey-patching module globals.
+    """
+    if configure_logging:
+        configure_context_logging(settings)
+
+    users = UserService() if users is None else users
+    event_bus = EventBus() if event_bus is None else event_bus
+    ollama = OllamaGateway(settings) if ollama is None else ollama
+
+    conversation = ConversationService(settings=settings, ollama=ollama) if conversation is None else conversation
+    if register_event_handlers:
+        _register_event_handlers(event_bus, conversation)
+
+    chat_service = ChatService(settings=settings, ollama=ollama) if chat_service is None else chat_service
+    agent_orchestrator = AgentOrchestrator() if agent_orchestrator is None else agent_orchestrator
+
+    chat_orchestrator = (
+        ChatOrchestrator(
+            conversation=conversation,
+            agent=agent_orchestrator,
+            chat=chat_service,
+            event_bus=event_bus,
+            show_thinking=settings.logging.show_thinking,
+        )
+        if chat_orchestrator is None
+        else chat_orchestrator
     )
-    rate_limiter = RateLimiter(
-        requests_per_minute=settings.security.rate_limit_requests_per_minute,
-        burst=settings.security.rate_limit_burst,
+
+    rate_limiter = (
+        RateLimiter(
+            requests_per_minute=settings.security.rate_limit_requests_per_minute,
+            burst=settings.security.rate_limit_burst,
+        )
+        if rate_limiter is None
+        else rate_limiter
     )
     return AppRuntime(
         settings=settings,

@@ -22,8 +22,11 @@ WELCOME_MESSAGE = (
 
 
 async def _keep_typing(message: Message, stop: asyncio.Event) -> None:
+    bot = message.bot
+    if bot is None:
+        return
     while not stop.is_set():
-        await message.bot.send_chat_action(message.chat.id, ChatAction.TYPING)
+        await bot.send_chat_action(message.chat.id, ChatAction.TYPING)
         await asyncio.sleep(4)
 
 
@@ -44,9 +47,12 @@ async def handle_start(message: Message) -> None:
 @router.message(Command("agent"))
 async def handle_agent(message: Message) -> None:
     runtime = get_runtime()
+    if message.from_user is None:
+        return
+    from_user = message.from_user
     user, created = runtime.users.get_or_create(
-        telegram_user_id=message.from_user.id,
-        username=message.from_user.username,
+        telegram_user_id=from_user.id,
+        username=from_user.username,
     )
     user_id = int(user.user_id)
     user_display = user.username or user_id
@@ -57,7 +63,8 @@ async def handle_agent(message: Message) -> None:
         await message.answer("You're sending requests too quickly. Please slow down.")
         return
 
-    task = message.text.replace("/agent", "", 1).strip()
+    raw_text = message.text or ""
+    task = raw_text.replace("/agent", "", 1).strip()
     if not task:
         await message.answer("Usage: `/agent <task>`\n\nExample: `/agent What is 12*15?`", parse_mode="Markdown")
         return
@@ -93,9 +100,12 @@ async def handle_agent(message: Message) -> None:
 @router.message(F.text)
 async def handle_text(message: Message) -> None:
     runtime = get_runtime()
+    if message.from_user is None:
+        return
+    from_user = message.from_user
     user, created = runtime.users.get_or_create(
-        telegram_user_id=message.from_user.id,
-        username=message.from_user.username,
+        telegram_user_id=from_user.id,
+        username=from_user.username,
     )
     user_id = int(user.user_id)
     user_display = user.username or user_id

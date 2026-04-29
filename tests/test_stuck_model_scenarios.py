@@ -13,7 +13,6 @@ from src.contracts import LLMReply
 from src.errors import OllamaTransportError
 from src.ollama_gateway import OllamaGateway
 from src.runtime import AppRuntime
-
 from tests._fakes import FakeOllamaGateway
 
 

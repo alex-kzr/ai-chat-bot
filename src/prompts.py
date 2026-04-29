@@ -1,3 +1,6 @@
+from collections.abc import Mapping, Sequence
+
+
 def escape_delimiter_chars(text: str) -> str:
     """Escape delimiter characters in text to prevent prompt injection."""
     return text.replace("<<", "‹‹").replace(">>", "››")
@@ -17,7 +20,7 @@ def wrap_tool_observation(tool_name: str, observation: str) -> str:
     return f'<<UNTRUSTED_TOOL_OUTPUT tool="{tool_name}">>{escaped}<</UNTRUSTED_TOOL_OUTPUT>>'
 
 
-def build_delimited_prompt(messages: list[dict]) -> str:
+def build_delimited_prompt(messages: Sequence[Mapping[str, object]]) -> str:
     """Build a prompt using explicit delimiters for roles.
 
     Args:
@@ -29,8 +32,8 @@ def build_delimited_prompt(messages: list[dict]) -> str:
     prompt_parts: list[str] = []
 
     for msg in messages:
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
+        role = str(msg.get("role") or "user")
+        content = str(msg.get("content") or "")
         escaped_content = escape_delimiter_chars(content)
 
         if role == "system":

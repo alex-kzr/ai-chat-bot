@@ -10,6 +10,7 @@ from typing import Literal
 from src.agent.parser import ActionStep, FinalStep, ParseError, parse_agent_output
 from src.agent.tools import TOOLS, validate_tool_args
 from src.context_logging import log_agent_event, summarize_text
+from src.contracts import ChatMessage
 from src.errors import OllamaProtocolError, OllamaTransportError
 from src.prompts import build_agent_prompt, wrap_tool_observation
 from src.security.injection_patterns import detect_injection_attempt
@@ -50,7 +51,7 @@ async def _parse_with_bounded_retries(
     run_id: str,
     step_index: int,
     system_prompt: str,
-    messages: list[dict[str, str]],
+    messages: list[ChatMessage],
     initial_response: str,
     settings,
 ) -> ActionStep | FinalStep | ParseError:
@@ -79,13 +80,13 @@ async def _parse_with_bounded_retries(
             reason=last_error.reason,
             raw= summarize_text(last_error.raw, max_chars=300),
         )
-        messages.append({"role": "assistant", "content": response})
-        messages.append(
-            {
-                "role": "user",
-                "content": "Your previous output did not match the required JSON contract. Respond with one JSON object only.",
-            }
-        )
+        assistant_message: ChatMessage = {"role": "assistant", "content": response}
+        messages.append(assistant_message)
+        retry_instruction: ChatMessage = {
+            "role": "user",
+            "content": "Your previous output did not match the required JSON contract. Respond with one JSON object only.",
+        }
+        messages.append(retry_instruction)
 
         try:
             llm_retry_started_at = time.perf_counter()
@@ -161,7 +162,7 @@ async def _finalize_with_bounded_retries(
     run_id: str,
     step_index: int,
     system_prompt: str,
-    messages: list[dict[str, str]],
+    messages: list[ChatMessage],
     initial_response: str,
     initial_final: FinalStep,
     settings,
@@ -186,7 +187,8 @@ async def _finalize_with_bounded_retries(
             answer_chars=len(candidate),
             cap=settings.agent.safety.max_final_answer_chars,
         )
-        messages.append({"role": "assistant", "content": response})
+        assistant_message: ChatMessage = {"role": "assistant", "content": response}
+        messages.append(assistant_message)
         if reason == "empty_final_answer":
             prompt = 'Your previous JSON had an empty "final_answer". Respond with one JSON object only: {"final_answer":"..."}'
         else:
@@ -194,7 +196,8 @@ async def _finalize_with_bounded_retries(
                 'Your previous "final_answer" was too long. '
                 f"Respond with one JSON object only, with final_answer <= {settings.agent.safety.max_final_answer_chars} characters."
             )
-        messages.append({"role": "user", "content": prompt})
+        retry_prompt: ChatMessage = {"role": "user", "content": prompt}
+        messages.append(retry_prompt)
 
         try:
             llm_retry_started_at = time.perf_counter()
@@ -376,7 +379,8 @@ async def run_agent(task: str) -> AgentResult:
     system_prompt = build_agent_prompt(tools_list)
 
     # Initialize messages
-    messages = [{"role": "user", "content": task}]
+    user_message: ChatMessage = {"role": "user", "content": task}
+    messages: list[ChatMessage] = [user_message]
 
     logger.info(f"Agent started on task: {task}")
     logger.debug("Agent tools: %s", ", ".join(TOOLS.keys()) if TOOLS else "(no tools)")
@@ -750,7 +754,7 @@ async def run_agent(task: str) -> AgentResult:
 
 async def _call_ollama(
     system_prompt: str,
-    messages: list,
+    messages: list[ChatMessage],
     *,
     run_id: str,
     step_index: int,
@@ -768,7 +772,8 @@ async def _call_ollama(
     """
     from src.runtime import get_runtime
 
-    all_messages = [{"role": "system", "content": system_prompt}] + messages
+    system_message: ChatMessage = {"role": "system", "content": system_prompt}
+    all_messages = [system_message, *messages]
     prompt = _messages_to_prompt(all_messages)
     runtime = get_runtime()
     settings = runtime.settings
@@ -800,7 +805,7 @@ async def _call_ollama(
     )
 
 
-def _messages_to_prompt(messages: list[dict]) -> str:
+def _messages_to_prompt(messages: list[ChatMessage]) -> str:
     """Convert message list to single prompt string for /api/generate endpoint."""
     from src.prompts import build_delimited_prompt
     return build_delimited_prompt(messages)

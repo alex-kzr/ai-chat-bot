@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 from dotenv import load_dotenv
@@ -341,7 +341,7 @@ def reload_settings() -> Settings:
     return _settings
 
 
-_LEGACY_ATTRS: dict[str, callable] = {
+_LEGACY_ATTRS: dict[str, Callable[[Settings], object]] = {
     "BOT_TOKEN": lambda s: s.bot_token,
     "OLLAMA_URL": lambda s: s.ollama.url,
     "OLLAMA_MODEL": lambda s: s.chat_model,
@@ -385,7 +385,7 @@ _LEGACY_ATTRS: dict[str, callable] = {
 }
 
 
-def __getattr__(name: str):  # type: ignore[no-untyped-def]
+def __getattr__(name: str) -> object:
     getter = _LEGACY_ATTRS.get(name)
     if getter is not None:
         return getter(get_settings())

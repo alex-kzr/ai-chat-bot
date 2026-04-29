@@ -3,11 +3,11 @@ from __future__ import annotations
 import inspect
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, cast
 
 logger = logging.getLogger(__name__)
 
-E = TypeVar("E")
+E = TypeVar("E", contravariant=True)
 
 
 class EventHandler(Protocol[E]):
@@ -20,7 +20,7 @@ class EventBus:
 
     def subscribe(self, event_type: type[E], handler: EventHandler[E]) -> None:
         handlers = self._subscribers.setdefault(event_type, [])
-        handlers.append(handler)  # type: ignore[arg-type]
+        handlers.append(cast(Callable[[Any], Awaitable[None] | None], handler))
 
     async def publish(self, event: Any) -> None:
         event_type = type(event)
@@ -41,4 +41,3 @@ def _handler_name(handler: object) -> str:
     if isinstance(name, str) and name:
         return name
     return handler.__class__.__name__
-

@@ -1,11 +1,11 @@
 """Shared pytest fixtures for the ai-chat-bot test suite."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from src.config import load_settings, Settings
-from src.contracts import LLMReply
+import pytest
+
+from src.config import Settings, load_settings
 from src.events.bus import EventBus
 from src.modules.users import UserService
 from src.runtime import (
@@ -14,7 +14,6 @@ from src.runtime import (
     set_runtime_for_testing,
 )
 from src.services.chat_orchestrator import ChatOutcome
-
 
 # ---------------------------------------------------------------------------
 # Settings

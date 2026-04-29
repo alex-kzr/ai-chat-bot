@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import json
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from src.agent.core import run_agent
 from src.config import load_settings
 from src.contracts import LLMReply
 from src.runtime import AppRuntime
-
 from tests._fakes import FakeOllamaGateway
 
 

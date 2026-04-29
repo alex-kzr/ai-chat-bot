@@ -1,12 +1,21 @@
 # Kanban Board
 
 ## To Do
- 
+
 
 ## In Progress
- 
+
  
 ## Done
+- QS-03: Optimize CI for reproducibility and speed
+- QS-02: Harden secret and configuration handling for CI
+- QS-01: Add fast static quality checks to CI
+- TH-03: Add CI-critical regression coverage for isolated execution
+- TH-02: Strengthen deterministic fakes for Telegram and LLM integrations
+- TH-01: Audit and refactor remaining hard-to-test runtime seams
+- WF-03: Document CI workflow usage and validation checklist
+- WF-02: Align dependencies and test commands for clean CI execution
+- WF-01: Create GitHub Actions Python CI workflow
 - DV-03: Add integration scenarios for stuck-model failures
 - DV-02: Add unit tests for safety protections
 - DV-01: Add structured loop diagnostics and watchdog telemetry

@@ -7,7 +7,6 @@ from src.contracts import LLMReply
 from src.runtime import AppRuntime
 from tests._fakes import FakeOllamaGateway, make_message, make_message_with_failing_answer
 
-
 # ---------------------------------------------------------------------------
 # FakeOllamaGateway
 # ---------------------------------------------------------------------------
@@ -72,6 +71,17 @@ async def test_fake_gateway_chat_once_records_call() -> None:
     assert result == "chat reply"
     assert gw.calls[0].method == "chat_once"
     assert gw.calls[0].model == "chat-model"
+
+
+@pytest.mark.unit
+async def test_fake_gateway_list_models_returns_configured_models_and_records_call() -> None:
+    """list_models returns configured models and records the call."""
+    gw = FakeOllamaGateway(models=["m1", "m2"])
+
+    models = await gw.list_models()
+
+    assert models == ["m1", "m2"]
+    assert gw.calls[0].method == "list_models"
 
 
 # ---------------------------------------------------------------------------

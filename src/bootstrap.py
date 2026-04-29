@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from collections.abc import Callable
 
 from . import config
 from .bot import run_bot
@@ -16,12 +17,12 @@ def configure_root_logging(level: str = "INFO") -> None:
     level_value = getattr(logging, str(level).upper(), logging.INFO)
     root = logging.getLogger()
     if not root.handlers:
-        handler = logging.StreamHandler()
-        handler.setFormatter(LevelAwareFormatter())
-        root.addHandler(handler)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(LevelAwareFormatter())
+        root.addHandler(stream_handler)
     else:
-        for handler in root.handlers:
-            handler.setFormatter(LevelAwareFormatter())
+        for existing_handler in root.handlers:
+            existing_handler.setFormatter(LevelAwareFormatter())
     root.setLevel(level_value)
 
 
@@ -32,19 +33,33 @@ async def discover_models(settings: Settings) -> list[str]:
     return await gateway.list_models()
 
 
-def choose_model(default_model: str, models: list[str]) -> str:
-    if not sys.stdin.isatty():
+def choose_model(
+    default_model: str,
+    models: list[str],
+    *,
+    is_interactive: bool | None = None,
+    prompt: Callable[[str], str] = input,
+    out: Callable[[str], None] = print,
+) -> str:
+    """Return the selected model name.
+
+    `prompt` and `out` are injectable for tests so model selection can be
+    exercised without a real TTY.
+    """
+    if is_interactive is None:
+        is_interactive = sys.stdin.isatty()
+
+    if not is_interactive:
         return default_model
     if not models:
         return default_model
 
-    print("\nAvailable models:")
+    out("\nAvailable models:")
     for i, name in enumerate(models, 1):
         marker = " (default)" if name == default_model else ""
-        print(f"  {i}. {name}{marker}")
+        out(f"  {i}. {name}{marker}")
 
-    print(f"\nEnter model number or press Enter to use [{default_model}]: ", end="", flush=True)
-    choice = input().strip()
+    choice = prompt(f"\nEnter model number or press Enter to use [{default_model}]: ").strip()
     if not choice:
         return default_model
     if choice.isdigit() and 1 <= int(choice) <= len(models):

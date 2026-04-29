@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
@@ -143,12 +144,13 @@ def setup_context_logger() -> logging.Logger:
     _close_logger_handlers(_context_logger)
 
     # Create appropriate handler based on configuration
+    handler: logging.Handler
     if settings.logging.destination.lower() == "file":
         # Ensure logs directory exists
         log_path = Path(settings.logging.file_path)
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
-        handler = logging.FileHandler(settings.logging.file_path, mode='a', delay=True)
+        handler = logging.FileHandler(settings.logging.file_path, mode="a", delay=True)
     else:  # Default to console
         handler = logging.StreamHandler()
 
@@ -321,7 +323,7 @@ def log_agent_event(run_id: str, event: str, *, level: str = "info", **fields: A
 
 
 def extract_context(
-    messages: list[dict],
+    messages: Sequence[Mapping[str, object]],
     user_id: str | None = None,
     model_name: str | None = None,
     temperature: float | None = None,
@@ -348,17 +350,17 @@ def extract_context(
         "statistics": {
             "total_messages": len(messages),
             "message_breakdown": _count_message_roles(messages),
-            "total_content_length": sum(len(msg.get("content", "")) for msg in messages),
+            "total_content_length": sum(len(str(msg.get("content") or "")) for msg in messages),
         }
     }
     return context
 
 
 def serialize_messages(
-    messages: list[dict],
+    messages: Sequence[Mapping[str, object]],
     include_content: bool = True,
     max_content_length: int = 500
-) -> list[dict]:
+) -> list[dict[str, Any]]:
     """
     Format messages array in a readable, loggable format.
 
@@ -375,11 +377,11 @@ def serialize_messages(
     for i, msg in enumerate(messages):
         serialized_msg = {
             "index": i,
-            "role": msg.get("role", "unknown"),
+            "role": str(msg.get("role") or "unknown"),
         }
 
         if include_content:
-            content = msg.get("content", "")
+            content = str(msg.get("content") or "")
             sanitized_content = sanitize_log_data(content)
             if len(sanitized_content) > max_content_length:
                 serialized_msg["content"] = sanitized_content[:max_content_length] + "..."
@@ -412,23 +414,16 @@ def extract_metadata(
     Returns:
         Dict containing request metadata
     """
-    metadata = {
-        "user_id": user_id,
-        "model": model_name,
-        "parameters": {}
-    }
-
-    # Add optional parameters if provided
+    parameters: dict[str, float | int] = {}
     if temperature is not None:
-        metadata["parameters"]["temperature"] = temperature
-
+        parameters["temperature"] = temperature
     if max_tokens is not None:
-        metadata["parameters"]["max_tokens"] = max_tokens
+        parameters["max_tokens"] = max_tokens
 
-    return metadata
+    return {"user_id": user_id, "model": model_name, "parameters": parameters}
 
 
-def _count_message_roles(messages: list[dict]) -> dict[str, int]:
+def _count_message_roles(messages: Sequence[Mapping[str, object]]) -> dict[str, int]:
     """
     Count messages by role.
 
@@ -438,9 +433,9 @@ def _count_message_roles(messages: list[dict]) -> dict[str, int]:
     Returns:
         Dict with counts of messages by role
     """
-    counts = {}
+    counts: dict[str, int] = {}
     for msg in messages:
-        role = msg.get("role", "unknown")
+        role = str(msg.get("role") or "unknown")
         counts[role] = counts.get(role, 0) + 1
 
     return counts
@@ -524,7 +519,7 @@ def _count_tokens_heuristic(text: str) -> int:
     return token_estimate
 
 
-def count_context_tokens(messages: list[dict]) -> int:
+def count_context_tokens(messages: Sequence[Mapping[str, object]]) -> int:
     """
     Count total tokens across a list of messages.
 
@@ -544,8 +539,8 @@ def count_context_tokens(messages: list[dict]) -> int:
     total_tokens = 0
 
     for msg in messages:
-        content = msg.get("content", "")
-        role = msg.get("role", "")
+        content = str(msg.get("content") or "")
+        role = str(msg.get("role") or "")
 
         # Count tokens in content
         content_tokens = count_tokens(content)

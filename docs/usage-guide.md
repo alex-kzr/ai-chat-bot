@@ -3,6 +3,7 @@
 ## Prerequisites
 
 - Python 3.10+
+- CI runs the test suite on Python 3.12 (GitHub Actions)
 - Ollama running locally
 - Telegram bot token
 
@@ -106,6 +107,14 @@ Run checks:
 pytest
 ruff check src tests
 mypy src
+```
+
+CI reproduction (matches `.github/workflows/python-ci.yml`):
+
+```bash
+# Use Python 3.12 locally if you want to match CI exactly
+python -m pip install -r requirements-dev.txt
+pytest
 ```
 
 ---

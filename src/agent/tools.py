@@ -16,6 +16,8 @@ from src.errors import ToolExecutionError
 
 logger = logging.getLogger(__name__)
 
+IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
+
 
 def _settings():
     from src.runtime import get_runtime
@@ -306,7 +308,7 @@ class _PageParser(HTMLParser):
         self.resources.append({"type": kind, "url": raw_url})
 
 
-def _is_private_ip(ip_obj: ipaddress.ip_address) -> bool:
+def _is_private_ip(ip_obj: IPAddress) -> bool:
     """Check if an IP is loopback, private, link-local, or reserved."""
     return (
         ip_obj.is_loopback
@@ -724,46 +726,48 @@ def _eval_node(node: ast.expr) -> float:
         raise ValueError(f"Unsupported constant type: {type(node.value).__name__}")
 
     if isinstance(node, ast.Num):
-        return float(node.n)
+        if isinstance(node.n, (int, float)):
+            return float(node.n)
+        raise ValueError(f"Unsupported numeric literal type: {type(node.n).__name__}")
 
     if isinstance(node, ast.BinOp):
         left = _eval_node(node.left)
         right = _eval_node(node.right)
-        op = node.op
+        bin_op = node.op
 
-        if isinstance(op, ast.Add):
+        if isinstance(bin_op, ast.Add):
             return left + right
-        if isinstance(op, ast.Sub):
+        if isinstance(bin_op, ast.Sub):
             return left - right
-        if isinstance(op, ast.Mult):
+        if isinstance(bin_op, ast.Mult):
             return left * right
-        if isinstance(op, ast.Div):
+        if isinstance(bin_op, ast.Div):
             if right == 0:
                 raise ValueError("Division by zero")
             return left / right
-        if isinstance(op, ast.FloorDiv):
+        if isinstance(bin_op, ast.FloorDiv):
             if right == 0:
                 raise ValueError("Division by zero")
             return float(left // right)
-        if isinstance(op, ast.Mod):
+        if isinstance(bin_op, ast.Mod):
             if right == 0:
                 raise ValueError("Modulo by zero")
             return float(left % right)
-        if isinstance(op, ast.Pow):
+        if isinstance(bin_op, ast.Pow):
             return left ** right
 
-        raise ValueError(f"Unsupported binary operator: {op.__class__.__name__}")
+        raise ValueError(f"Unsupported binary operator: {bin_op.__class__.__name__}")
 
     if isinstance(node, ast.UnaryOp):
         operand = _eval_node(node.operand)
-        op = node.op
+        unary_op = node.op
 
-        if isinstance(op, ast.UAdd):
+        if isinstance(unary_op, ast.UAdd):
             return operand
-        if isinstance(op, ast.USub):
+        if isinstance(unary_op, ast.USub):
             return -operand
 
-        raise ValueError(f"Unsupported unary operator: {op.__class__.__name__}")
+        raise ValueError(f"Unsupported unary operator: {unary_op.__class__.__name__}")
 
     raise ValueError(f"Unsafe or unsupported expression node: {ast.dump(node)}")
 

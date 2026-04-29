@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import json
 import asyncio
+import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import httpx
 
 from .config import Settings
-from .contracts import ChatMessage
 from .context_logging import log_agent_event, summarize_text
+from .contracts import ChatMessage
 from .errors import OllamaProtocolError, OllamaTransportError
 from .prompts import AGENT_STOP_SEQUENCES
 

@@ -25,13 +25,38 @@ ruff check src tests
 mypy src
 ```
 
+## CI
+
+This repository uses GitHub Actions to run the test suite automatically on:
+- every push to `main`
+- every pull request
+
+Workflow: `.github/workflows/python-ci.yml`
+
+CI runtime contract:
+- Python: 3.12
+- Install: `python -m pip install -r requirements-dev.txt` (pip cache enabled via `actions/setup-python`)
+- Static checks: `ruff check src tests`, `mypy src`
+- Test command: `pytest`
+
+Notes:
+- `bandit` and `pip-audit` are available for manual runs but are not part of the default CI job to keep feedback fast.
+- CI does not require a real `BOT_TOKEN`; tests inject safe placeholder values via environment overrides/fixtures.
+- CI does not auto-upgrade `pip` to keep installs simpler and avoid extra network work; pin dependency versions if you need stricter reproducibility.
+
+Validation checklist:
+- A push to `main` or opening a PR starts the workflow automatically.
+- A failing test fails the job (non-zero exit code).
+- Local reproduction on Python 3.12 matches CI: `pip install -r requirements-dev.txt` then `pytest`.
+- No secrets are committed to the repo; sensitive values are provided via environment variables (or GitHub Secrets in CI when needed).
+
 ## Running tests
 
 ```bash
 pytest -q                      # full suite
 pytest -q -m unit              # unit tests only
 pytest -q -m handlers          # handler tests only
-pytest --cov=src --cov-report=term-missing  # optional coverage (pip install -e ".[dev]")
+pytest --cov=src --cov-report=term-missing  # optional coverage
 ```
 
 ### Static analysis

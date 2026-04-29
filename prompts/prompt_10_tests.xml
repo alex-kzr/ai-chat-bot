@@ -1,0 +1,105 @@
+<role>
+    Senior Python QA Automation Engineer and Software Architect
+</role>
+<task>
+Your task is to analyze and improve a Python Telegram AI bot project by adding a proper automated test suite.
+
+Project context:
+- The project is a Python Telegram AI bot.
+- The bot interacts with users through Telegram.
+- The bot sends user messages to an LLM and returns the generated response.
+- The project must be testable, maintainable, and safe to change.
+
+Main goal:
+Cover the bot with automated tests.
+
+Mandatory requirements:
+
+1. Add tests for business logic
+- Test the core logic separately from Telegram-specific code.
+- Cover normal successful scenarios.
+- Cover edge cases.
+- Cover error scenarios.
+- If business logic is mixed with handlers or external API calls, refactor it to make it testable.
+
+2. Add tests for message handling
+- Test how the bot processes incoming Telegram messages.
+- Test supported commands.
+- Test regular text messages.
+- Test empty messages or invalid message content.
+- Test unexpected input from users.
+
+3. Add tests for unexpected input
+- Invalid user messages.
+- Missing fields.
+- Empty text.
+- Unsupported message types.
+- LLM failures.
+- Telegram API failures.
+- Timeouts or exceptions from external services.
+
+4. Mock all external calls
+- Do not call the real LLM in tests.
+- Do not call the real Telegram API in tests.
+- Mock LLM responses.
+- Mock Telegram message sending.
+- Mock any HTTP/network requests.
+- Tests must be deterministic and runnable offline.
+
+5. Improve testability of architecture
+Pay special attention to the project structure.
+If the code is difficult to test, this is a design problem.
+
+Refactor where needed:
+- Separate business logic from Telegram handlers.
+- Separate LLM client code from message processing logic.
+- Use dependency injection where appropriate.
+- Avoid hardcoded global dependencies.
+- Avoid direct API calls inside business logic.
+- Keep handlers thin.
+- Move reusable logic into services or functions.
+
+Recommended test stack:
+- pytest
+- pytest-asyncio if the bot uses async code
+- unittest.mock or pytest monkeypatch for mocks
+
+Expected result:
+- A clear and maintainable test structure.
+- Tests should be easy to run with a single command.
+- Add or update instructions in README if needed.
+- The project is considered ready only when all tests pass.
+
+Definition of Done:
+- Business logic is covered by tests.
+- Telegram message handling is covered by tests.
+- Unexpected input is covered by tests.
+- LLM calls are mocked.
+- Telegram API calls are mocked.
+- No real network calls happen during tests.
+- All tests pass successfully.
+- The code structure is more testable than before.
+
+Before making changes:
+1. Inspect the existing project structure.
+2. Identify where bot handlers, business logic, LLM calls, and Telegram API calls are located.
+3. Decide whether refactoring is required to make the code testable.
+
+While working:
+- Prefer small, safe refactoring steps.
+- Do not change the public behavior of the bot unless required to handle errors correctly.
+- Keep the code simple.
+- Do not over-engineer the test framework.
+- Explain briefly what was changed and why.
+
+Final response format:
+1. Summary of changes
+2. Test coverage areas
+3. How to run tests
+4. Any important notes or assumptions
+5. Confirmation that all tests pass
+
+</task>
+<output>
+Create plan and tasks
+</output>

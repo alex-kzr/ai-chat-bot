@@ -1,21 +1,25 @@
-# Feature: Security Hardening
+# Feature: Automated Test Suite
 
-This plan adds security controls to the Telegram AI chatbot to mitigate prompt injection, server-side request forgery (SSRF), unsafe tool usage, denial-of-service, and accidental disclosure of secrets in logs. The bot exposes an LLM, chat history, an agent loop with tools (`calculator`, `http_request`), and runs against a local Ollama instance, so the surface area covers user input, tool execution, retrieved web content, and observability.
+This plan adds a comprehensive automated test suite to the Telegram AI chatbot so the project becomes safe to change. The bot already has focused tests under `tests/` (security, events, services), but coverage is uneven: Telegram handlers, full LLM round-trips, and adverse-input paths are not consistently exercised, and there is no shared scaffolding for handler-level tests.
 
-The work preserves existing behavior, public bot commands, and the modular monolith architecture (`src/modules/*`, `src/agent/*`, `src/services/*`). Changes are minimal, configuration-driven where possible, and validated by focused tests.
+The goal is to cover business logic, Telegram message handling, and unexpected/error inputs with deterministic, offline tests. All external calls (Ollama LLM, Telegram Bot API, outbound HTTP) must be mocked; tests must be runnable with a single `pytest` invocation. Refactors are kept minimal and only introduced where current code is genuinely hard to test (e.g. handler-level access to `get_runtime()` global). The work preserves the existing modular monolith architecture (`src/modules/*`, `src/services/*`, `src/agent/*`) and the public bot contract.
 
-## Phase 1: Tool & SSRF Hardening (TSH-01 to TSH-03)
+## Phase 1: Test Foundations (TF-01 to TF-03)
 
-Lock down the `http_request` tool against SSRF and unsafe targets (loopback, private RFC1918, link-local, cloud metadata endpoints), validate tool-call arguments via explicit schemas before execution, and re-check redirect targets so an attacker cannot bounce through a public host into an internal one.
+Establish shared scaffolding for the new tests: pytest fixtures for a fake `Runtime` (settings, users, event bus, rate limiter, orchestrators), a `FakeOllamaGateway` that returns scripted replies without touching the network, and reusable Telegram `Message`/`Bot` builders so handler tests can be written declaratively without ad-hoc mocks in every file. Document the test layout, markers, and the canonical pytest command.
 
-## Phase 2: Input & DoS Protection (IDP-01 to IDP-03)
+## Phase 2: Business Logic Coverage (BLC-01 to BLC-04)
 
-Add deterministic limits at the request boundary: maximum user input length in Telegram handlers, per-user rate limiting, and a centralized log sanitizer that masks secret-looking tokens (bot tokens, API keys, bearer headers, cookies) before they reach console or file logs.
+Cover the core logic modules in isolation from Telegram. Tests target `ChatService` (system prompt + history → `LLMReply`), `HistoryService` (append, trim at `MAX_HISTORY_MESSAGES`, summarization trigger), `ChatOrchestrator` (URL vs normal-text routing, `MessageReceived`/`ResponseGenerated` publication), and the agent loop (`agent.core.run_agent`: parser → tool dispatch → `final_answer`, `max_steps` stop reason).
 
-## Phase 3: Prompt Injection Mitigation (PIM-01 to PIM-03)
+## Phase 3: Telegram Handler Coverage (THC-01 to THC-04)
 
-Strengthen the trust boundary between system instructions, user input, chat history, and tool observations. Use unambiguous role-tagged delimiters in the prompt builder, wrap tool observations in an explicit "untrusted data" envelope, and detect/flag known instruction-override patterns ("ignore previous instructions", "reveal your system prompt", etc.) so the LLM cannot be silently steered by retrieved content.
+Cover `src/handlers.py` end-to-end with a fake aiogram `Message` and a stubbed runtime. Tests verify `/start` welcome reply, `/agent` command parsing (missing task, valid task), `handle_text` happy path (user resolved, orchestrator called, reply delivered, response logged), and the message-splitting + typing-indicator lifecycle so long replies and the typing background task behave correctly.
 
-## Phase 4: Security Tests & Tooling (STS-01 to STS-02)
+## Phase 4: Failure & Edge Case Coverage (FEC-01 to FEC-04)
 
-Add a focused security test suite covering SSRF, prompt injection, oversized input, system-prompt leakage, and invalid tool calls. Wire static analysis (`bandit`, `pip-audit`, `ruff`) into the project tooling and document how to run them locally.
+Cover adverse inputs and external-service failures. Empty / whitespace-only messages, non-text Telegram updates (photo, voice, sticker), LLM failures (timeout, HTTP error, raised exception → fallback phrase from `ERROR_PHRASES`), and Telegram API failures (`message.answer` raising) — none of which should crash the handler or leak secrets into logs.
+
+## Phase 5: Tooling & Test Documentation (TTD-01 to TTD-02)
+
+Add a thin testability seam for the `get_runtime()` global so handlers can be exercised without monkey-patching module internals, and finalize developer ergonomics: pytest markers (`unit`, `integration`, `handlers`), a single canonical run command, optional coverage reporting, and a short "How to run tests" section in `README.md`.

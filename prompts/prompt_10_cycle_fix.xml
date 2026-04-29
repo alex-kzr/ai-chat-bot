@@ -1,0 +1,325 @@
+<role>
+    Senior Python AI Agent Engineer
+</role>
+<task>
+
+# Проблема
+
+При работе AI-агента с локальной LLM-моделью (например через Ollama/vLLM/LM Studio/OpenAI-compatible API) модель в режиме streaming начинает бесконечно повторять один и тот же текст или один и тот же шаблон ответа.
+
+Пример проблемного поведения:
+
+* модель циклически повторяет одинаковые предложения;
+* модель повторяет один и тот же JSON;
+* агент продолжает делать одинаковые tool calls;
+* поток не завершается;
+* финальный ответ никогда не возвращается;
+* токены продолжают генерироваться бесконечно;
+* агент зацикливается между несколькими состояниями.
+
+---
+
+# Требуется
+
+Провести анализ причин проблемы и реализовать защиту от зацикливания генерации.
+
+---
+
+# Возможные причины (проверить все)
+
+## 1. Отсутствие stop conditions
+
+Проверить:
+
+* stop sequences;
+* EOS token;
+* max_tokens/max_new_tokens;
+* streaming termination;
+* parser finalization.
+
+---
+
+## 2. Ошибки agent loop
+
+Проверить:
+
+* бесконечный цикл ReAct;
+* отсутствие ограничения по шагам;
+* повтор одного и того же tool call;
+* повтор одного и того же prompt;
+* отсутствие состояния завершения.
+
+---
+
+## 3. Ошибки parser-а
+
+Проверить:
+
+* parser не распознаёт final_answer;
+* parser ломается на markdown/json;
+* parser повторно отправляет один и тот же prompt;
+* parser игнорирует успешный ответ.
+
+---
+
+## 4. Ошибки streaming
+
+Проверить:
+
+* stream never closes;
+* partial chunks duplicated;
+* reconnect loop;
+* duplicated delta handling;
+* repeated token append logic.
+
+---
+
+## 5. Проблемы локальной модели
+
+Проверить:
+
+* модель плохо следует JSON schema;
+* модель зацикливается на temperature/top_p;
+* модель не умеет корректно завершать ответ;
+* модель не поддерживает текущий prompt format;
+* несовместимость chat template.
+
+---
+
+# Что необходимо реализовать
+
+## 1. Hard limits
+
+Добавить:
+
+* max agent steps;
+* max retries;
+* max loop iterations;
+* max repeated answers;
+* max identical tool calls;
+* max response length;
+* timeout для LLM response;
+* timeout для stream.
+
+Пример:
+
+```python
+MAX_AGENT_STEPS = 15
+MAX_REPEAT_COUNT = 3
+MAX_IDENTICAL_TOOL_CALLS = 2
+STREAM_TIMEOUT_SECONDS = 60
+```
+
+---
+
+## 2. Loop detection
+
+Реализовать обнаружение:
+
+* одинаковых ответов подряд;
+* одинаковых tool calls подряд;
+* одинаковых reasoning blocks;
+* циклических состояний.
+
+Пример:
+
+```python
+if similarity(current_answer, previous_answer) > 0.95:
+repeat_counter += 1
+```
+
+При превышении лимита:
+
+* аварийно завершать loop;
+* возвращать controlled error;
+* сохранять diagnostics.
+
+---
+
+## 3. Streaming watchdog
+
+Добавить watchdog:
+
+* если stream не меняется N секунд → abort;
+* если идут одинаковые токены → abort;
+* если chunk повторяется слишком много раз → abort.
+
+---
+
+## 4. Tool call protection
+
+Добавить защиту:
+
+* одинаковый tool call не может вызываться бесконечно;
+* agent обязан изменить arguments;
+* agent обязан объяснить retry reason;
+* tool retry limit.
+
+---
+
+## 5. Final answer enforcement
+
+Добавить механизм:
+
+* агент ОБЯЗАН завершать выполнение через final_answer;
+* parser должен жёстко валидировать формат;
+* invalid output → controlled retry;
+* repeated invalid output → terminate.
+
+---
+
+## 6. JSON parser hardening
+
+Parser должен:
+
+* уметь извлекать JSON из markdown;
+* уметь работать с мусором вокруг JSON;
+* валидировать schema;
+* различать:
+
+* action step;
+* final answer;
+* invalid response.
+
+---
+
+## 7. Diagnostics и logging
+
+Обязательно логировать:
+
+* полный prompt;
+* полный raw LLM output;
+* stream chunks;
+* tool calls;
+* loop iterations;
+* similarity scores;
+* termination reason;
+* parser errors;
+* retry reasons.
+
+---
+
+# Требуется добавить
+
+## Unit tests
+
+Проверить:
+
+* repeated output detection;
+* infinite tool loop detection;
+* malformed JSON handling;
+* stream timeout;
+* repeated chunk detection;
+* forced finalization.
+
+---
+
+## Integration tests
+
+Создать тестовые сценарии:
+
+### Scenario 1
+
+Модель бесконечно повторяет текст.
+
+Ожидание:
+
+* loop detected;
+* generation aborted.
+
+---
+
+### Scenario 2
+
+Модель бесконечно вызывает один и тот же tool.
+
+Ожидание:
+
+* tool loop detected;
+* agent terminated.
+
+---
+
+### Scenario 3
+
+Модель возвращает мусор вместо JSON.
+
+Ожидание:
+
+* parser retries limited;
+* controlled failure returned.
+
+---
+
+### Scenario 4
+
+Stream никогда не завершается.
+
+Ожидание:
+
+* stream timeout;
+* connection aborted.
+
+---
+
+# Definition of Done
+
+Задача считается выполненной если:
+
+* агент больше не может зависнуть бесконечно;
+* любые циклы корректно обнаруживаются;
+* streaming имеет timeout protection;
+* parser устойчив к мусорному output;
+* tool loops ограничены;
+* все тесты проходят;
+* логирование позволяет диагностировать проблему.
+
+---
+
+# Дополнительно (желательно)
+
+## Рекомендуемые улучшения
+
+Рассмотреть:
+
+* semantic similarity detection;
+* token entropy monitoring;
+* stuck-state detection;
+* circuit breaker;
+* adaptive retry strategy;
+* automatic model fallback;
+* separate watchdog thread/task;
+* structured telemetry.
+
+---
+
+# Важно
+
+Исправление должно быть универсальным и не зависеть от конкретной модели.
+
+Оно должно работать для:
+
+* Ollama;
+* vLLM;
+* LM Studio;
+* OpenAI-compatible APIs;
+* Qwen;
+* Llama;
+* Mistral;
+* Gemma;
+* DeepSeek;
+* Claude-compatible gateways.
+
+Приоритет:
+
+1. Надёжное завершение loop;
+2. Защита от бесконечной генерации;
+3. Стабильность agent runtime;
+4. Диагностируемость проблемы.
+
+По всем изменениям необходимо сделать или доработать тесты
+
+</task>
+<output>
+    Create plan and task in English
+</output>

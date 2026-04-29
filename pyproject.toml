@@ -3,6 +3,11 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-q"
 asyncio_mode = "auto"
+markers = [
+  "unit: pure logic tests — no I/O, no network",
+  "handlers: exercises src/handlers.py with fake runtime and mocked Telegram",
+  "integration: wires multiple real modules together",
+]
 
 [tool.ruff]
 line-length = 100
@@ -42,6 +47,7 @@ dependencies = [
 dev = [
   "pytest>=8.3.0",
   "pytest-asyncio>=0.23.0",
+  "pytest-cov>=5.0",
   "ruff>=0.6.0",
   "mypy>=1.11.0",
   "bandit>=1.7.0",

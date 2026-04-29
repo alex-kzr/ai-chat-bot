@@ -25,6 +25,15 @@ ruff check src tests
 mypy src
 ```
 
+## Running tests
+
+```bash
+pytest -q                      # full suite
+pytest -q -m unit              # unit tests only
+pytest -q -m handlers          # handler tests only
+pytest --cov=src --cov-report=term-missing  # optional coverage (pip install -e ".[dev]")
+```
+
 ### Static analysis
 
 The project uses three security and code quality tools:

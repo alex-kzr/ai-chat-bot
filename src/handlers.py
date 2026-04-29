@@ -27,9 +27,18 @@ async def _keep_typing(message: Message, stop: asyncio.Event) -> None:
         await asyncio.sleep(4)
 
 
+async def _safe_answer(message: Message, text: str) -> bool:
+    try:
+        await message.answer(text)
+    except Exception as exc:
+        logging.error("telegram_answer_failed err_type=%s", type(exc).__name__)
+        return False
+    return True
+
+
 @router.message(Command("start"))
 async def handle_start(message: Message) -> None:
-    await message.answer(WELCOME_MESSAGE)
+    await _safe_answer(message, WELCOME_MESSAGE)
 
 
 @router.message(Command("agent"))
@@ -74,7 +83,8 @@ async def handle_agent(message: Message) -> None:
     try:
         answer = (await runtime.agent_orchestrator.run_task(task)).strip() or random.choice(ERROR_PHRASES)
         for chunk in _split_message(answer):
-            await message.answer(chunk)
+            if not await _safe_answer(message, chunk):
+                break
     finally:
         stop.set()
         typing_task.cancel()
@@ -96,8 +106,15 @@ async def handle_text(message: Message) -> None:
         await message.answer("You're sending requests too quickly. Please slow down.")
         return
 
+    if not message.text:
+        logging.info("Skipping non-text message from %s", user_display)
+        return
+
     max_chars = runtime.settings.security.max_user_input_chars
     text = message.text.strip()
+    if not text:
+        logging.info("Skipping empty/whitespace text message from %s", user_display)
+        return
     if len(text) > max_chars:
         await message.answer(f"Message is too long (max {max_chars} characters).")
         return
@@ -116,7 +133,18 @@ async def handle_text(message: Message) -> None:
     stop = asyncio.Event()
     typing_task = asyncio.create_task(_keep_typing(message, stop))
     try:
-        outcome = await runtime.chat_orchestrator.process_text(user_id, text)
+        try:
+            outcome = await runtime.chat_orchestrator.process_text(user_id, text)
+        except Exception as exc:
+            logging.error(
+                "chat_orchestrator_failed user=%s err_type=%s",
+                user_display,
+                type(exc).__name__,
+            )
+            reply = random.choice(ERROR_PHRASES)
+            for chunk in _split_message(reply):
+                await message.answer(chunk)
+            return
     finally:
         stop.set()
         typing_task.cancel()
@@ -126,7 +154,8 @@ async def handle_text(message: Message) -> None:
         logging.error("Skipping empty bot reply for user_id=%s; returning fallback phrase", user_id)
         reply = random.choice(ERROR_PHRASES)
     for chunk in _split_message(reply):
-        await message.answer(chunk)
+        if not await _safe_answer(message, chunk):
+            break
     asyncio.create_task(_log_response(outcome.llm_raw, reply))
 
 

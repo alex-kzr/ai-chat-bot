@@ -32,6 +32,8 @@ class AppRuntime:
 
 
 _runtime: AppRuntime | None = None
+_runtime_override: AppRuntime | None = None
+_runtime_override_stack: list[AppRuntime | None] = []
 
 
 def create_runtime(settings: Settings) -> AppRuntime:
@@ -77,7 +79,31 @@ def set_runtime(runtime: AppRuntime) -> None:
     _runtime = runtime
 
 
+def set_runtime_for_testing(runtime: AppRuntime) -> None:
+    """Override runtime for tests without monkey-patching module internals.
+
+    Test-only helper.
+    """
+    global _runtime_override
+    _runtime_override_stack.append(_runtime_override)
+    _runtime_override = runtime
+
+
+def reset_runtime_for_testing() -> None:
+    """Reset any active runtime override.
+
+    Test-only helper.
+    """
+    global _runtime_override
+    if _runtime_override_stack:
+        _runtime_override = _runtime_override_stack.pop()
+    else:
+        _runtime_override = None
+
+
 def get_runtime() -> AppRuntime:
+    if _runtime_override is not None:
+        return _runtime_override
     if _runtime is None:
         raise RuntimeError("Runtime is not initialized. Call bootstrap before starting handlers.")
     return _runtime

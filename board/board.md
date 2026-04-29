@@ -1,10 +1,29 @@
 # Kanban Board
 
 ## To Do
+ 
 
 ## In Progress
+ 
 
 ## Done
+- TTD-02: Test markers, coverage, and README section
+- TTD-01: Inject runtime override seam
+- FEC-04: Telegram API failure handling
+- FEC-03: LLM failure handling
+- FEC-02: Unsupported message types ignored
+- FEC-01: Empty and whitespace-only input
+- THC-04: Test message splitting and typing indicator
+- THC-03: Test handle_agent command parsing
+- THC-02: Test handle_text happy path
+- THC-01: Test handle_start
+- BLC-04: Cover agent loop end-to-end
+- BLC-03: Cover ChatOrchestrator routing and events
+- BLC-02: Cover HistoryService trim and summarization
+- BLC-01: Cover ChatService request/response cycle
+- TF-03: Document test layout and markers
+- TF-02: FakeOllamaGateway and Telegram message builders
+- TF-01: Shared pytest fixtures for runtime and settings
 - STS-02: Wire static analysis tooling
 - STS-01: Add security test suite
 - PIM-03: Detect injection-override phrases in untrusted text

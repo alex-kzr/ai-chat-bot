@@ -1,0 +1,161 @@
+<role>
+    Senior Python Backend Engineer and DevOps Engineer specializing in Telegram AI bots, CI/CD automation, software architecture, and testability.
+</role>
+<task>
+# Role
+
+Configure and validate a production-quality CI pipeline for a Python Telegram AI bot project.
+
+# Objective
+
+Set up a fully automated CI pipeline using GitHub Actions for a Python 3.12 project.
+
+The pipeline must automatically run tests on every push to the `main` branch and on every pull request.
+
+# Required GitHub Actions Configuration
+
+Use the following workflow configuration as the baseline:
+
+```yaml
+name: Python CI
+
+on:
+push:
+branches: [main]
+pull_request:
+
+jobs:
+test:
+runs-on: ubuntu-latest
+
+steps:
+- name: Checkout
+uses: actions/checkout@v4
+
+- name: Setup Python
+uses: actions/setup-python@v5
+with:
+python-version: "3.12"
+
+- name: Install dependencies
+run: |
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+
+- name: Run tests
+run: pytest
+```
+
+# Requirements
+
+The pipeline MUST:
+
+* run automatically
+* fail immediately if tests fail
+* require zero manual actions
+* work in a clean environment
+* be deterministic and reproducible
+* support isolated execution
+* not depend on local developer machines
+
+# Architecture Expectations
+
+You MUST evaluate and improve the project architecture from a testability perspective.
+
+Important principle:
+
+If the code is difficult to test,
+that means the architecture is poorly designed.
+
+The project should favor:
+
+* dependency injection
+* separation of concerns
+* isolated business logic
+* modular design
+* stateless services where possible
+* proper abstraction boundaries
+* mockable external integrations
+
+# Speed Requirements
+
+The CI pipeline should be optimized for speed.
+
+Focus on:
+
+* minimal unnecessary installations
+* efficient dependency handling
+* avoiding redundant steps
+* fast test execution
+* lightweight workflow design
+
+# Security Requirements
+
+Secrets MUST NOT be stored in:
+
+* source code
+* repository files
+* workflow YAML
+* test fixtures
+* hardcoded configuration
+
+Secrets must be loaded only through:
+
+* GitHub Actions Secrets
+* environment variables
+* secure runtime configuration
+
+# Testing Requirements
+
+The solution should support:
+
+* unit tests
+* integration tests
+* mocked Telegram API calls
+* mocked LLM calls
+* deterministic test execution
+
+Tests must not depend on:
+
+* real Telegram servers
+* real LLM APIs
+* external internet access
+* developer local state
+
+# Expected Deliverables
+
+Provide:
+
+1. Complete `.github/workflows/python-ci.yml`
+2. Recommended project structure improvements
+3. Testability improvements
+4. CI optimization recommendations
+5. Security recommendations
+6. Explanation of architectural decisions
+7. Validation checklist
+
+# Success Criteria
+
+The project is considered complete only if:
+
+* `git push` automatically starts the pipeline
+* all tests pass automatically
+* no manual steps are required
+* the pipeline fails on errors
+* secrets are not stored in code
+* the workflow is reproducible
+* the project architecture remains testable and maintainable
+* CI execution is fast and stable
+
+# Important Constraints
+
+* Do not introduce unnecessary complexity.
+* Prefer simple and maintainable solutions.
+* Prefer standard Python ecosystem tooling.
+* Follow Python best practices and clean architecture principles.
+* All recommendations must be practical and production-oriented.
+
+</task>
+<output>
+    Create plan and tasks
+</output>

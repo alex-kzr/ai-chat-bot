@@ -19,6 +19,11 @@ def test_load_settings_success_defaults() -> None:
     assert settings.chat_model == "qwen3:0.6b"
     assert settings.history.max_messages == 20
     assert settings.logging.level == "INFO"
+    assert settings.agent.safety.max_parse_retries == 1
+    assert settings.agent.safety.max_model_output_chars >= 2000
+    assert settings.agent.safety.max_final_answer_chars >= 500
+    assert settings.agent.safety.max_repeat_state_signatures >= 2
+    assert settings.agent.safety.max_repeat_stream_chunks >= 1
 
 
 def test_load_settings_rejects_invalid_keep_recent_boundary() -> None:

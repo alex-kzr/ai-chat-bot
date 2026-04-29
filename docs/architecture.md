@@ -95,7 +95,7 @@ Notes:
 - `run_id`
 - `final_answer`
 - `steps`
-- `stopped_reason` (`final`, `max_steps`, `error`)
+- `stopped_reason` (`final`, `max_steps`, `parser_retry_exhausted`, `llm_error`, `response_too_long`, `final_answer_too_long`, ...)
 
 `Step`:
 - `action`
@@ -108,8 +108,10 @@ Notes:
 
 - Tool protocol strictly enforced (`tool`, `args`, `final_answer`)
 - Parser gracefully handles malformed model output
+- Streaming watchdog aborts stalled or repeating streams
 - HTTP tool bounded by timeout and byte limits
 - Resource loading is same-origin and limit-controlled
+- Tool-loop policy blocks repeated identical tool calls unless args change or a retry reason is provided
 - Event subscriptions are registered in runtime wiring (modules communicate via `EventBus`)
 - Structured logging with run correlation supports reproducible debugging
 

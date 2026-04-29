@@ -65,11 +65,31 @@ class AgentToolSettings:
 
 
 @dataclass(slots=True)
+class AgentSafetySettings:
+    """Centralized agent loop safety limits.
+
+    These settings define deterministic upper bounds for agent runs and allow callers
+    to distinguish controlled termination paths via AgentResult.stop_reason.
+    """
+
+    max_parse_retries: int
+    max_model_output_chars: int
+    max_final_answer_chars: int
+    max_repeat_final_answer: int
+    max_repeat_tool_calls: int
+    max_repeat_state_signatures: int
+    max_repeat_stream_chunks: int
+    llm_request_timeout: int
+    llm_stream_timeout: int
+
+
+@dataclass(slots=True)
 class AgentSettings:
     max_steps: int
     model: str
     temperature: float
     tools: AgentToolSettings
+    safety: AgentSafetySettings
 
 
 @dataclass(slots=True)
@@ -249,11 +269,36 @@ def load_settings(*, env: Mapping[str, str] | None = None, load_dotenv_file: boo
         http_domain_allowlist=_parse_domain_list(source, "AGENT_TOOL_HTTP_DOMAIN_ALLOWLIST"),
     )
 
+    agent_safety = AgentSafetySettings(
+        max_parse_retries=_parse_int(source, "AGENT_MAX_PARSE_RETRIES", 1, min_value=0, max_value=5),
+        max_model_output_chars=_parse_int(source, "AGENT_MAX_MODEL_OUTPUT_CHARS", 20000, min_value=2000),
+        max_final_answer_chars=_parse_int(source, "AGENT_MAX_FINAL_ANSWER_CHARS", 8000, min_value=500),
+        max_repeat_final_answer=_parse_int(source, "AGENT_MAX_REPEAT_FINAL_ANSWER", 2, min_value=1, max_value=10),
+        max_repeat_tool_calls=_parse_int(source, "AGENT_MAX_REPEAT_TOOL_CALLS", 3, min_value=1, max_value=20),
+        max_repeat_state_signatures=_parse_int(
+            source,
+            "AGENT_MAX_REPEAT_STATE_SIGNATURES",
+            3,
+            min_value=2,
+            max_value=50,
+        ),
+        max_repeat_stream_chunks=_parse_int(
+            source,
+            "AGENT_MAX_REPEAT_STREAM_CHUNKS",
+            25,
+            min_value=1,
+            max_value=200,
+        ),
+        llm_request_timeout=_parse_int(source, "AGENT_LLM_REQUEST_TIMEOUT", ollama.timeout, min_value=1),
+        llm_stream_timeout=_parse_int(source, "AGENT_LLM_STREAM_TIMEOUT", ollama.timeout, min_value=1),
+    )
+
     agent = AgentSettings(
         max_steps=_parse_int(source, "AGENT_MAX_STEPS", 8, min_value=5, max_value=10),
         model=_get_non_empty(source, "AGENT_MODEL", ollama.default_model),
         temperature=_parse_float(source, "AGENT_TEMPERATURE", 0.2),
         tools=agent_tools,
+        safety=agent_safety,
     )
 
     security = SecuritySettings(
@@ -327,6 +372,16 @@ _LEGACY_ATTRS: dict[str, callable] = {
     "AGENT_TOOL_MAX_TOTAL_RESOURCE_BYTES": lambda s: s.agent.tools.max_total_resource_bytes,
     "AGENT_TOOL_MAX_MAIN_TEXT_CHARS": lambda s: s.agent.tools.max_main_text_chars,
     "AGENT_TOOL_MAX_OBSERVATION_CHARS": lambda s: s.agent.tools.max_observation_chars,
+    "AGENT_TOOL_HTTP_DOMAIN_ALLOWLIST": lambda s: s.agent.tools.http_domain_allowlist,
+    "AGENT_MAX_PARSE_RETRIES": lambda s: s.agent.safety.max_parse_retries,
+    "AGENT_MAX_MODEL_OUTPUT_CHARS": lambda s: s.agent.safety.max_model_output_chars,
+    "AGENT_MAX_FINAL_ANSWER_CHARS": lambda s: s.agent.safety.max_final_answer_chars,
+    "AGENT_MAX_REPEAT_FINAL_ANSWER": lambda s: s.agent.safety.max_repeat_final_answer,
+    "AGENT_MAX_REPEAT_TOOL_CALLS": lambda s: s.agent.safety.max_repeat_tool_calls,
+    "AGENT_MAX_REPEAT_STATE_SIGNATURES": lambda s: s.agent.safety.max_repeat_state_signatures,
+    "AGENT_MAX_REPEAT_STREAM_CHUNKS": lambda s: s.agent.safety.max_repeat_stream_chunks,
+    "AGENT_LLM_REQUEST_TIMEOUT": lambda s: s.agent.safety.llm_request_timeout,
+    "AGENT_LLM_STREAM_TIMEOUT": lambda s: s.agent.safety.llm_stream_timeout,
 }
 
 
@@ -339,6 +394,7 @@ def __getattr__(name: str):  # type: ignore[no-untyped-def]
 
 __all__ = [
     "AgentSettings",
+    "AgentSafetySettings",
     "AgentToolSettings",
     "HistorySettings",
     "LoggingSettings",

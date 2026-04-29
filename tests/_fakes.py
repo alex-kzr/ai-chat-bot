@@ -54,9 +54,28 @@ class FakeOllamaGateway:
         *,
         model: str,
         temperature: float | None = None,
+        timeout: float | None = None,
+        run_id: str | None = None,
+        step_index: int | None = None,
+        request_kind: str | None = None,
+        retry_index: int | None = None,
     ) -> str:
         """Return bot_reply from the next scripted LLMReply."""
-        self.calls.append(GatewayCall(method="generate_once", model=model, prompt=prompt))
+        self.calls.append(
+            GatewayCall(
+                method="generate_once",
+                model=model,
+                prompt=prompt,
+                options={
+                    "timeout": timeout,
+                    "temperature": temperature,
+                    "run_id": run_id,
+                    "step_index": step_index,
+                    "request_kind": request_kind,
+                    "retry_index": retry_index,
+                },
+            )
+        )
         reply = self._pop()
         return reply.bot_reply
 
@@ -65,12 +84,22 @@ class FakeOllamaGateway:
         prompt: str,
         *,
         model: str,
+        timeout: float | None = None,
         on_thinking_chunk: Callable[[str], None] | None = None,
         on_content_chunk: Callable[[str], None] | None = None,
         on_stream_done: Callable[[], None] | None = None,
+        run_id: str | None = None,
+        step_index: int | None = None,
     ) -> tuple[str, str]:
         """Return (bot_reply, thinking) from the next scripted LLMReply, firing callbacks."""
-        self.calls.append(GatewayCall(method="generate_streamed_text", model=model, prompt=prompt))
+        self.calls.append(
+            GatewayCall(
+                method="generate_streamed_text",
+                model=model,
+                prompt=prompt,
+                options={"timeout": timeout, "run_id": run_id, "step_index": step_index},
+            )
+        )
         reply = self._pop()
         if on_thinking_chunk and reply.thinking:
             on_thinking_chunk(reply.thinking)
@@ -137,5 +166,3 @@ def make_message_with_failing_answer(
     msg = make_message(text=text, user_id=user_id, username=username, chat_id=chat_id)
     msg.answer.side_effect = exc or RuntimeError("Telegram answer failed")
     return msg
-
-

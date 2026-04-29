@@ -14,6 +14,18 @@ _context_logger: logging.Logger | None = None
 _context_settings: Settings | None = None
 
 
+def summarize_text(value: str | None, *, max_chars: int = 300) -> dict[str, Any]:
+    """Return a bounded, sanitized preview for logging."""
+    raw = "" if value is None else str(value)
+    sanitized = sanitize_log_data(raw)
+    preview = sanitized[:max_chars]
+    return {
+        "chars": len(raw),
+        "preview": preview,
+        "truncated": len(sanitized) > max_chars,
+    }
+
+
 def _close_logger_handlers(logger: logging.Logger) -> None:
     """Detach and close all handlers to release resources and file locks."""
     for handler in list(logger.handlers):

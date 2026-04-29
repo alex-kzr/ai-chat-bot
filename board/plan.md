@@ -1,25 +1,17 @@
-# Feature: Automated Test Suite
+# Feature: Agent Loop Safety and Streaming Protection
 
-This plan adds a comprehensive automated test suite to the Telegram AI chatbot so the project becomes safe to change. The bot already has focused tests under `tests/` (security, events, services), but coverage is uneven: Telegram handlers, full LLM round-trips, and adverse-input paths are not consistently exercised, and there is no shared scaffolding for handler-level tests.
+This plan hardens the agent runtime against infinite generation, repeated tool loops, malformed structured output, and streams that never finish when using local or OpenAI-compatible LLM backends. The current architecture already has an iterative agent loop, a strict parser, and structured logging, but it still needs stronger runtime guardrails so one bad model response cannot keep the agent stuck forever.
 
-The goal is to cover business logic, Telegram message handling, and unexpected/error inputs with deterministic, offline tests. All external calls (Ollama LLM, Telegram Bot API, outbound HTTP) must be mocked; tests must be runnable with a single `pytest` invocation. Refactors are kept minimal and only introduced where current code is genuinely hard to test (e.g. handler-level access to `get_runtime()` global). The work preserves the existing modular monolith architecture (`src/modules/*`, `src/services/*`, `src/agent/*`) and the public bot contract.
+The goal is to guarantee controlled termination across Ollama, vLLM, LM Studio, and other OpenAI-compatible gateways without coupling the fix to a single model family. The implementation must add hard runtime limits, detect repeated or cyclic states, enforce final-answer completion rules, and produce diagnostics that make failures easy to investigate. The work also includes unit and integration coverage for the main failure scenarios described in the prompt.
 
-## Phase 1: Test Foundations (TF-01 to TF-03)
+## Phase 1: Guardrails and Watchdogs (GW-01 to GW-04)
 
-Establish shared scaffolding for the new tests: pytest fixtures for a fake `Runtime` (settings, users, event bus, rate limiter, orchestrators), a `FakeOllamaGateway` that returns scripted replies without touching the network, and reusable Telegram `Message`/`Bot` builders so handler tests can be written declaratively without ad-hoc mocks in every file. Document the test layout, markers, and the canonical pytest command.
+Introduce the hard runtime boundaries that keep one agent run finite: configurable step/retry/tool-call/response-size limits, stream and response timeouts, repeated-output detection, repeated-tool detection, and watchdog-based abort paths when the model stops making progress.
 
-## Phase 2: Business Logic Coverage (BLC-01 to BLC-04)
+## Phase 2: Parser and Finalization Hardening (PF-01 to PF-03)
 
-Cover the core logic modules in isolation from Telegram. Tests target `ChatService` (system prompt + history → `LLMReply`), `HistoryService` (append, trim at `MAX_HISTORY_MESSAGES`, summarization trigger), `ChatOrchestrator` (URL vs normal-text routing, `MessageReceived`/`ResponseGenerated` publication), and the agent loop (`agent.core.run_agent`: parser → tool dispatch → `final_answer`, `max_steps` stop reason).
+Strengthen the structured-output contract so the agent can recover from noisy markdown/JSON, reject invalid action payloads deterministically, enforce final-answer completion, and terminate with a controlled error after bounded retries instead of re-prompting forever.
 
-## Phase 3: Telegram Handler Coverage (THC-01 to THC-04)
+## Phase 3: Diagnostics and Validation (DV-01 to DV-03)
 
-Cover `src/handlers.py` end-to-end with a fake aiogram `Message` and a stubbed runtime. Tests verify `/start` welcome reply, `/agent` command parsing (missing task, valid task), `handle_text` happy path (user resolved, orchestrator called, reply delivered, response logged), and the message-splitting + typing-indicator lifecycle so long replies and the typing background task behave correctly.
-
-## Phase 4: Failure & Edge Case Coverage (FEC-01 to FEC-04)
-
-Cover adverse inputs and external-service failures. Empty / whitespace-only messages, non-text Telegram updates (photo, voice, sticker), LLM failures (timeout, HTTP error, raised exception → fallback phrase from `ERROR_PHRASES`), and Telegram API failures (`message.answer` raising) — none of which should crash the handler or leak secrets into logs.
-
-## Phase 5: Tooling & Test Documentation (TTD-01 to TTD-02)
-
-Add a thin testability seam for the `get_runtime()` global so handlers can be exercised without monkey-patching module internals, and finalize developer ergonomics: pytest markers (`unit`, `integration`, `handlers`), a single canonical run command, optional coverage reporting, and a short "How to run tests" section in `README.md`.
+Complete the feature with detailed loop diagnostics, targeted unit tests for the protection mechanisms, and integration scenarios that simulate infinite text repetition, repeated tool calls, malformed JSON, and non-terminating streams.

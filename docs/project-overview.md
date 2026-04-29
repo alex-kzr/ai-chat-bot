@@ -35,6 +35,8 @@ Demonstrate a production-lean Telegram ↔ local-LLM integration with explicit r
 
 **Polling, not webhooks.** Simplifies deployment — no public HTTPS endpoint required.
 
+**Model-agnostic agent termination.** The agent loop relies on explicit runtime limits (timeouts, output-size caps, repeat detection) and conservative stop-sequences on the Ollama boundary to prevent endless generation across different model backends.
+
 ---
 
 ## Boundaries / non-features

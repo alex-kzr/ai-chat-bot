@@ -18,6 +18,14 @@ Flow:
 Stop reasons:
 - `final`
 - `max_steps`
+- `parser_retry_exhausted`
+- `llm_error`
+- `request_timeout`
+- `stream_timeout`
+- `response_too_long`
+- `final_answer_too_long`
+- `repeat_detected`
+- `tool_loop`
 - `error`
 
 ---
@@ -27,16 +35,18 @@ Stop reasons:
 **Location:** `src/agent/parser.py`
 
 Extraction order:
-1. Fenced JSON block (```json ... ```)
-2. First balanced JSON object in text
-3. Parse error if nothing valid extracted
+1. Any fenced code block (prefers ```json```), validated against the schema
+2. Any balanced JSON object in text, picking the first schema-valid payload
+3. Raw text as JSON (last resort)
+4. Parse error if nothing schema-valid extracted
 
 Validation:
 - top-level JSON must be an object
-- allowed terminal keys are `final_answer` or `tool`
+- payload must include exactly one of `final_answer` or `tool`
 - `final_answer` must be `str`
 - `tool` must be non-empty `str`
 - `args` must be an object when `tool` is present
+- optional `retry_reason` must be `str` when present
 
 ---
 

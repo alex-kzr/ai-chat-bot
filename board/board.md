@@ -5,8 +5,18 @@
 
 ## In Progress
  
-
+ 
 ## Done
+- DV-03: Add integration scenarios for stuck-model failures
+- DV-02: Add unit tests for safety protections
+- DV-01: Add structured loop diagnostics and watchdog telemetry
+- PF-03: Align prompt and runtime with model-agnostic stop conditions
+- PF-02: Enforce final-answer completion with bounded retries
+- PF-01: Harden JSON extraction and schema validation
+- GW-04: Prevent infinite tool-call retries
+- GW-03: Add stream watchdog and timeout aborts
+- GW-02: Detect repeated outputs and cyclic agent states
+- GW-01: Define runtime safety settings and stop reasons
 - TTD-02: Test markers, coverage, and README section
 - TTD-01: Inject runtime override seam
 - FEC-04: Telegram API failure handling

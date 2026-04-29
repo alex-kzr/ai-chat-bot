@@ -1,0 +1,158 @@
+<role>
+    Senior Python AI Agent Engineer
+</role>
+<task>
+
+You are working on a Python Telegram AI bot that uses a local LLM. The bot has an agent loop where the model can either request tool calls or return a final answer. The current issue is that for some user requests the local model starts streaming the same text repeatedly in a loop and never produces a valid final answer.
+
+Problem:
+The local model sometimes repeats the same phrase, JSON fragment, tool call, or reasoning pattern indefinitely during streaming. As a result:
+- the user never receives a final answer;
+- the bot can hang until manually interrupted;
+- the agent loop may continue forever or for too many steps;
+- logs become noisy and hard to debug;
+- Telegram response handling may remain open for too long.
+
+Goal:
+Fix the agent loop so that it is safe, bounded, observable, and able to recover from repetitive or non-final model output.
+
+Required behavior:
+1. The agent must never run forever.
+2. The agent must stop after a configurable maximum number of steps.
+3. The streaming model response must have configurable limits:
+- maximum generated tokens or characters;
+- maximum streaming duration;
+- maximum repeated chunks or repeated text patterns.
+4. The agent must detect repetition during streaming.
+5. If repetition is detected, the generation must be stopped and handled gracefully.
+6. If the model does not return a valid final answer or valid tool call, the agent must either:
+- retry once with a short corrective prompt, or
+- return a safe fallback final answer to the user.
+7. The user must receive a clear final message instead of waiting forever.
+8. All abnormal exits must be logged with enough context for debugging.
+
+Implementation requirements:
+
+1. Add hard limits to the agent loop
+- Add configuration values such as:
+- AGENT_MAX_STEPS
+- AGENT_MAX_STREAM_SECONDS
+- AGENT_MAX_OUTPUT_CHARS
+- AGENT_MAX_REPEATED_CHUNKS
+- AGENT_RETRY_ON_INVALID_OUTPUT
+- The defaults should be safe for local models.
+- The values should be configurable through environment variables or a central config module.
+
+2. Detect repeated streaming output
+Implement a repetition guard for streamed tokens/chunks.
+The guard should detect cases such as:
+- the same chunk repeated many times;
+- the same line repeated many times;
+- the same JSON fragment repeated many times;
+- output length growing while semantic content does not change.
+
+Suggested implementation ideas:
+- Keep a sliding window of recent chunks.
+- Count identical chunks.
+- Normalize whitespace before comparison.
+- Detect repeated suffixes in the accumulated output.
+- Stop generation if the repetition threshold is exceeded.
+
+3. Stop generation safely
+When repetition or timeout is detected:
+- cancel or break the streaming loop;
+- mark the step as failed with a clear reason;
+- do not continue blindly with the same prompt forever;
+- return a controlled error or fallback final answer.
+
+4. Improve JSON parsing and final-answer handling
+The agent should only continue when the model returns one of the allowed structures:
+
+Tool call:
+{
+"action": "tool_name",
+"args": {}
+}
+
+Final answer:
+{
+"final_answer": "text for the user"
+}
+
+If the model returns invalid JSON, repeated JSON, partial JSON, markdown-wrapped JSON, or plain text:
+- attempt robust extraction/parsing;
+- if parsing fails, retry once with a corrective prompt;
+- if retry fails, return a fallback final answer.
+
+5. Add a corrective retry prompt
+When the model output is invalid or repetitive, retry at most once with a short prompt like:
+
+"Your previous response was invalid or repetitive. Return exactly one valid JSON object and nothing else. Use either {\"final_answer\": \"...\"} or {\"action\": \"tool_name\", \"args\": {...}}."
+
+The retry must also be protected by the same stream limits and repetition guard.
+
+6. Improve the system prompt
+Update the agent system prompt to explicitly state:
+- never repeat the same content;
+- always finish with either a valid tool call JSON or final_answer JSON;
+- do not include markdown fences;
+- do not output explanations outside JSON;
+- if no tool is needed, return final_answer immediately;
+- if stuck, return a final_answer explaining the limitation.
+
+7. Add logging
+Log the following for each agent run:
+- user task;
+- step number;
+- raw model output or a safely truncated version;
+- parser result;
+- selected tool call, if any;
+- final answer, if any;
+- stop reason, such as max_steps, stream_timeout, repeated_output, invalid_json, retry_failed.
+
+Do not log secrets, tokens, API keys, or private credentials.
+
+8. Add tests
+Add or update tests for:
+- normal final answer;
+- normal tool call;
+- invalid JSON response;
+- repeated chunk streaming;
+- repeated line streaming;
+- max steps exceeded;
+- retry succeeds after invalid output;
+- retry fails and fallback answer is returned;
+- Telegram handler does not hang when the agent fails internally.
+
+Use mocks for:
+- local LLM streaming responses;
+- Telegram API calls;
+- external tools.
+
+Acceptance criteria:
+The task is complete when:
+1. The bot no longer hangs when the local model repeats itself.
+2. Repetitive streaming output is detected and stopped.
+3. The agent always returns either a valid final answer or a controlled fallback response.
+4. The agent loop has a hard maximum step count.
+5. Invalid model output is retried at most once.
+6. All new tests pass.
+7. Existing tests still pass.
+8. The code remains simple, testable, and isolated.
+
+Suggested fallback message to the user:
+"I could not complete the request because the local model produced invalid or repetitive output. Please try rephrasing the request or use a stronger model."
+
+Definition of done:
+- Configuration for agent limits exists.
+- Repetition guard exists and is covered by tests.
+- Agent loop respects max steps and stream limits.
+- Parser handles malformed model output robustly.
+- Retry logic is bounded.
+- Telegram handler always receives a final result object.
+- pytest passes successfully.
+
+</task>
+<output>
+    Create plan and task
+</output>

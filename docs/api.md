@@ -76,7 +76,10 @@ Parser output types (`src/agent/parser.py`):
 Loop stop conditions (`src/agent/core.py`):
 - `final` (got `final_answer`)
 - `max_steps` (reached `AGENT_MAX_STEPS`)
-- `error` (terminal parse/LLM failure)
+- `parser_retry_exhausted` (parse retries exhausted for invalid model output)
+- `response_too_long` (raw model output exceeded `AGENT_MAX_MODEL_OUTPUT_CHARS`)
+- `final_answer_too_long` (final answer exceeded `AGENT_MAX_FINAL_ANSWER_CHARS`)
+- `llm_error` (terminal LLM/transport failure)
 
 ---
 
@@ -125,6 +128,13 @@ Tool error format:
 ## Key Config Knobs
 
 - `AGENT_MAX_STEPS`
+- `AGENT_MAX_PARSE_RETRIES`
+- `AGENT_MAX_MODEL_OUTPUT_CHARS`
+- `AGENT_MAX_FINAL_ANSWER_CHARS`
+- `AGENT_MAX_REPEAT_FINAL_ANSWER`
+- `AGENT_MAX_REPEAT_TOOL_CALLS`
+- `AGENT_LLM_REQUEST_TIMEOUT`
+- `AGENT_LLM_STREAM_TIMEOUT`
 - `AGENT_TOOL_TIMEOUT`
 - `AGENT_TOOL_USER_AGENT`
 - `AGENT_TOOL_FOLLOW_REDIRECTS`
@@ -134,3 +144,4 @@ Tool error format:
 - `AGENT_TOOL_MAX_TOTAL_RESOURCE_BYTES`
 - `AGENT_TOOL_MAX_MAIN_TEXT_CHARS`
 - `AGENT_TOOL_MAX_OBSERVATION_CHARS`
+- `AGENT_TOOL_HTTP_DOMAIN_ALLOWLIST`

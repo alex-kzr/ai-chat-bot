@@ -15,6 +15,7 @@ class ActionStep:
 
     action: str
     args: dict
+    retry_reason: str | None = None
 
 
 @dataclass
@@ -56,35 +57,14 @@ def parse_agent_output(raw: str) -> ParsedStep:
     """
     raw = raw.strip()
 
-    # Try to extract fenced JSON block
-    fenced_json = _extract_fenced_json(raw)
-    if fenced_json:
-        parsed = _validate_json(fenced_json)
-        if parsed is not None:
-            if not isinstance(parsed, dict):
-                return ParseError(
-                    reason=f"Top-level JSON must be an object, got {type(parsed).__name__}",
-                    raw=fenced_json,
-                )
-            return _build_step(parsed, fenced_json)
+    step, parse_failures = _parse_from_candidates(raw)
+    if step is not None:
+        return step
 
-    # Try to extract balanced JSON block
-    balanced_json = _extract_balanced_json(raw)
-    if balanced_json:
-        parsed = _validate_json(balanced_json)
-        if parsed is not None:
-            if not isinstance(parsed, dict):
-                return ParseError(
-                    reason=f"Top-level JSON must be an object, got {type(parsed).__name__}",
-                    raw=balanced_json,
-                )
-            return _build_step(parsed, balanced_json)
-
-    # Fallback: parse error
-    return ParseError(
-        reason="Could not extract valid JSON from output",
-        raw=raw,
-    )
+    # Provide a deterministic failure reason; avoid "silent" fallthrough.
+    if parse_failures:
+        return ParseError(reason=parse_failures[0], raw=raw)
+    return ParseError(reason="Could not extract JSON from output", raw=raw)
 
 
 def parse_agent_output_or_raise(raw: str) -> ActionStep | FinalStep:
@@ -94,48 +74,99 @@ def parse_agent_output_or_raise(raw: str) -> ActionStep | FinalStep:
     return parsed
 
 
-def _extract_fenced_json(text: str) -> str | None:
-    """Extract JSON from ```json ... ``` fenced block."""
-    # Match ```json ... ``` (with or without newlines)
-    pattern = r"```\s*json\s*\n?(.*?)\n?```"
-    match = re.search(pattern, text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return None
+def _parse_from_candidates(raw: str) -> tuple[ActionStep | FinalStep | ParseError | None, list[str]]:
+    """Try to parse a contract-compliant step from a messy model output.
+
+    Returns:
+        (step or None, failures)
+    """
+    failures: list[str] = []
+
+    # 1) Fenced blocks (```json ...``` or ``` ... ```)
+    fenced_blocks = _extract_fenced_blocks(raw)
+    for json_str in _prioritize_fenced_blocks(fenced_blocks):
+        step = _parse_json_object_to_step(json_str, failures)
+        if step is not None:
+            return step, failures
+
+    # 2) Inline balanced objects; try all and pick the first that validates the schema.
+    for json_str in _iter_balanced_json_objects(raw):
+        step = _parse_json_object_to_step(json_str, failures)
+        if step is not None:
+            return step, failures
+
+    # 3) If the raw itself is JSON (e.g., no braces noise), try it last.
+    step = _parse_json_object_to_step(raw, failures)
+    if step is not None:
+        return step, failures
+
+    return None, failures
 
 
-def _extract_balanced_json(text: str) -> str | None:
-    """Extract first balanced JSON object from text."""
-    start_idx = text.find("{")
-    if start_idx == -1:
-        return None
+def _extract_fenced_blocks(text: str) -> list[tuple[str | None, str]]:
+    """Return all triple-backtick fenced blocks as (lang, body)."""
+    # Match ```lang?\n<body>\n``` (lang may be absent).
+    blocks: list[tuple[str | None, str]] = []
+    for match in re.finditer(r"```[ \t]*([A-Za-z0-9_-]+)?[ \t]*\r?\n(.*?)\r?\n```", text, re.DOTALL):
+        lang = match.group(1).lower().strip() if match.group(1) else None
+        body = match.group(2).strip()
+        blocks.append((lang, body))
+    return blocks
 
-    # Walk from { to matching }, respecting strings
+
+def _prioritize_fenced_blocks(blocks: list[tuple[str | None, str]]) -> list[str]:
+    """Prefer ```json``` blocks, then other fenced blocks."""
+    json_first = [body for lang, body in blocks if lang == "json"]
+    other = [body for lang, body in blocks if lang != "json"]
+    return [*json_first, *other]
+
+
+def _iter_balanced_json_objects(text: str) -> list[str]:
+    """Extract all balanced JSON objects from text (best-effort)."""
+    candidates: list[str] = []
+    for start_idx in _iter_char_indexes(text, "{"):
+        candidate = _extract_balanced_from(text, start_idx)
+        if candidate is not None:
+            candidates.append(candidate)
+    return candidates
+
+
+def _iter_char_indexes(text: str, char: str) -> list[int]:
+    indexes: list[int] = []
+    i = text.find(char)
+    while i != -1:
+        indexes.append(i)
+        i = text.find(char, i + 1)
+    return indexes
+
+
+def _extract_balanced_from(text: str, start_idx: int) -> str | None:
+    """Extract a single balanced {...} object from a specific start position."""
     brace_depth = 0
     in_string = False
     escape_next = False
 
     for i in range(start_idx, len(text)):
-        char = text[i]
+        c = text[i]
 
         if escape_next:
             escape_next = False
             continue
 
-        if char == "\\":
+        if c == "\\":
             escape_next = True
             continue
 
-        if char == '"':
+        if c == '"':
             in_string = not in_string
             continue
 
         if in_string:
             continue
 
-        if char == "{":
+        if c == "{":
             brace_depth += 1
-        elif char == "}":
+        elif c == "}":
             brace_depth -= 1
             if brace_depth == 0:
                 return text[start_idx : i + 1]
@@ -159,6 +190,24 @@ def _validate_json(json_str: str) -> object | None:
         return None
 
 
+def _parse_json_object_to_step(
+    json_str: str,
+    failures: list[str],
+) -> ActionStep | FinalStep | ParseError | None:
+    parsed = _validate_json(json_str)
+    if parsed is None:
+        failures.append("Extracted JSON candidate but it was not valid JSON")
+        return None
+    if not isinstance(parsed, dict):
+        failures.append(f"Top-level JSON must be an object, got {type(parsed).__name__}")
+        return None
+    step = _build_step(parsed, json_str)
+    if isinstance(step, ParseError):
+        failures.append(step.reason)
+        return None
+    return step
+
+
 def _build_step(data: dict, raw_json: str) -> ActionStep | FinalStep | ParseError:
     """Build ActionStep, FinalStep, or ParseError from parsed data.
 
@@ -169,20 +218,43 @@ def _build_step(data: dict, raw_json: str) -> ActionStep | FinalStep | ParseErro
     Returns:
         Appropriate step type.
     """
-    # Check for final_answer
-    if "final_answer" in data:
-        final_answer = data["final_answer"]
-        if isinstance(final_answer, str):
-            return FinalStep(final_answer=final_answer)
+    has_final = "final_answer" in data
+    has_tool = "tool" in data
+
+    if has_final and has_tool:
         return ParseError(
-            reason=f"Invalid type for 'final_answer': expected string, got {type(final_answer).__name__}",
+            reason="Payload must include exactly one of 'final_answer' or 'tool'",
             raw=raw_json,
         )
 
-    # Check for tool step
-    if "tool" in data:
+    if has_final:
+        allowed_keys = {"final_answer"}
+        unexpected = sorted(set(data.keys()) - allowed_keys)
+        if unexpected:
+            return ParseError(
+                reason=f"Unexpected keys for final answer payload: {unexpected}",
+                raw=raw_json,
+            )
+        final_answer = data["final_answer"]
+        if not isinstance(final_answer, str):
+            return ParseError(
+                reason=f"Invalid type for 'final_answer': expected string, got {type(final_answer).__name__}",
+                raw=raw_json,
+            )
+        return FinalStep(final_answer=final_answer)
+
+    if has_tool:
+        allowed_keys = {"tool", "args", "retry_reason"}
+        unexpected = sorted(set(data.keys()) - allowed_keys)
+        if unexpected:
+            return ParseError(
+                reason=f"Unexpected keys for tool payload: {unexpected}",
+                raw=raw_json,
+            )
+
         tool = data.get("tool")
         args = data.get("args", {})
+        retry_reason = data.get("retry_reason")
 
         if not isinstance(tool, str):
             return ParseError(
@@ -199,7 +271,13 @@ def _build_step(data: dict, raw_json: str) -> ActionStep | FinalStep | ParseErro
                 reason=f"Invalid type for 'args': expected object, got {type(args).__name__}",
                 raw=raw_json,
             )
-        return ActionStep(action=tool.strip(), args=args)
+        if retry_reason is not None and not isinstance(retry_reason, str):
+            return ParseError(
+                reason=f"Invalid type for 'retry_reason': expected string, got {type(retry_reason).__name__}",
+                raw=raw_json,
+            )
+        clean_reason = retry_reason.strip() if isinstance(retry_reason, str) else None
+        return ActionStep(action=tool.strip(), args=args, retry_reason=clean_reason or None)
 
     # Neither final_answer nor tool found
     logger.warning(f"Could not identify step type in: {raw_json}")
